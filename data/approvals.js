@@ -1,0 +1,51 @@
+export const approvals = [
+  {
+    id: 'appr-1',
+    asset: '/images/ad-square.jpg',
+    assetName: 'Summer Collection — Variant B',
+    campaign: 'Summer Leather Collection',
+    creator: 'Emily Rodriguez',
+    reviewer: 'Sarah Chen',
+    status: 'Awaiting Review',
+    createdDate: '2026-08-17T09:00:00Z',
+    comments: [],
+  },
+  {
+    id: 'appr-2',
+    asset: '/images/ad-vertical.jpg',
+    assetName: 'Watch Strap Launch — Story',
+    campaign: 'Watch Strap Launch',
+    creator: 'James Wilson',
+    reviewer: 'Sarah Chen',
+    status: 'Approved',
+    createdDate: '2026-08-16T14:00:00Z',
+    comments: [{ author: 'Sarah Chen', text: 'Great creative! Approved for launch.', time: '2026-08-16T16:45:00Z' }],
+  },
+  {
+    id: 'appr-3',
+    asset: '/images/product-cardholder.jpg',
+    assetName: 'Card Holder — TikTok Ad',
+    campaign: 'TikTok Viral Push',
+    creator: 'Emily Rodriguez',
+    reviewer: 'Sarah Chen',
+    status: 'Changes Requested',
+    createdDate: '2026-08-15T11:00:00Z',
+    comments: [{ author: 'Sarah Chen', text: 'Please update the CTA and make the offer more prominent.', time: '2026-08-15T15:30:00Z' }],
+  },
+  {
+    id: 'appr-4',
+    asset: '/images/product-belt.jpg',
+    assetName: 'Executive Belt — LinkedIn',
+    campaign: 'Executive Belt Promo',
+    creator: 'James Wilson',
+    reviewer: 'Alex Morgan',
+    status: 'Rejected',
+    createdDate: '2026-08-14T10:00:00Z',
+    comments: [{ author: 'Alex Morgan', text: 'Tone doesn\'t match brand guidelines. Please revise.', time: '2026-08-14T16:00:00Z' }],
+  },
+];
+
+export const comments = [
+  { id: 'c-1', author: 'Sarah Chen', text: 'Great creative! Approved for launch.', time: '2026-08-16T16:45:00Z' },
+  { id: 'c-2', author: 'Sarah Chen', text: 'Please update the CTA and make the offer more prominent.', time: '2026-08-15T15:30:00Z' },
+];
