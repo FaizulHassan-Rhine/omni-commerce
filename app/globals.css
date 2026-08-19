@@ -46,7 +46,7 @@
     @apply mb-1.5 block text-sm font-medium text-text-primary dark:text-slate-300;
   }
   .page-container {
-    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-[96rem] px-2 sm:px-3 lg:px-4;
   }
   .gradient-text {
     @apply bg-brand-gradient bg-clip-text text-transparent;
@@ -59,5 +59,20 @@
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
+  }
+}
+
+@layer components {
+  .range-brand {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-200;
+  }
+  .range-brand::-webkit-slider-thumb {
+    @apply h-4 w-4 appearance-none rounded-full border-2 border-white bg-brand-primary shadow-sm;
+  }
+  .range-brand::-moz-range-thumb {
+    @apply h-4 w-4 rounded-full border-2 border-white bg-brand-primary shadow-sm;
+  }
+  .range-brand::-moz-range-track {
+    @apply h-1.5 rounded-full bg-gray-200;
   }
 }

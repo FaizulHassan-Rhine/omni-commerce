@@ -3,6 +3,7 @@ export const user = {
   name: 'Alex Morgan',
   email: 'alex@novacommerce.com',
   role: 'Growth Manager',
+  teamRole: 'Admin',
   avatar: 'AM',
   workspace: 'Nova Commerce',
   plan: 'Pro',
@@ -17,9 +18,11 @@ export const workspace = {
   teamMembers: 8,
 };
 
+export const TEAM_ROLES = ['Admin', 'Moderator', 'Reviewer'];
+
 export const teamMembers = [
-  { id: 'tm-1', name: 'Alex Morgan', role: 'Growth Manager', avatar: 'AM' },
-  { id: 'tm-2', name: 'Sarah Chen', role: 'Creative Director', avatar: 'SC' },
-  { id: 'tm-3', name: 'James Wilson', role: 'Media Buyer', avatar: 'JW' },
-  { id: 'tm-4', name: 'Emily Rodriguez', role: 'Content Strategist', avatar: 'ER' },
+  { id: 'tm-1', name: 'Alex Morgan', email: 'alex@novacommerce.com', teamRole: 'Admin', avatar: 'AM' },
+  { id: 'tm-2', name: 'Sarah Chen', email: 'sarah@novacommerce.com', teamRole: 'Moderator', avatar: 'SC' },
+  { id: 'tm-3', name: 'James Wilson', email: 'james@novacommerce.com', teamRole: 'Reviewer', avatar: 'JW' },
+  { id: 'tm-4', name: 'Emily Rodriguez', email: 'emily@novacommerce.com', teamRole: 'Reviewer', avatar: 'ER' },
 ];

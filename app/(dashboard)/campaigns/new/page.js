@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function NewCampaignPage() {
-  redirect('/create/campaign');
+  redirect('/campaigns/create');
 }

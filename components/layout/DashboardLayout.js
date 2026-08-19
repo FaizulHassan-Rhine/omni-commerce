@@ -16,9 +16,9 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="min-h-screen bg-bg-light">
       <AppSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
-      <div className="lg:pl-64">
+      <div className="lg:pl-56">
         <TopNavbar onMenuClick={() => setMobileOpen(true)} />
-        <main className="px-4 pb-20 pt-20 lg:px-6 lg:pb-6 lg:pt-24">{children}</main>
+        <main className="px-2 pb-20 pt-20 sm:px-3 lg:px-3 lg:pb-6 lg:pt-24 xl:px-4">{children}</main>
       </div>
       <ToastContainer />
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-gray-200/80 bg-white px-2 py-2 lg:hidden">

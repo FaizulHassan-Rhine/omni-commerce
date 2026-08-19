@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { user } from '@/data/users';
 import { formatRelativeTime } from '@/lib/utils';
 import { getRouteMeta } from '@/lib/navigation';
@@ -18,6 +19,8 @@ export default function TopNavbar({ onMenuClick }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead } = useApp();
+  const { logout } = useAuth();
+  const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -26,7 +29,7 @@ export default function TopNavbar({ onMenuClick }) {
 
   return (
     <>
-      <header className="fixed top-0 right-0 left-0 z-40 flex h-16 items-center gap-4 border-b border-gray-200/80 bg-white px-4 shadow-header lg:left-64">
+      <header className="fixed top-0 right-0 left-0 z-40 flex h-16 items-center gap-4 border-b border-gray-200/80 bg-white px-4 shadow-header lg:left-56">
         <button onClick={onMenuClick} className="cursor-pointer rounded-lg p-2 hover:bg-gray-100 lg:hidden">
           <Menu className="h-5 w-5 text-text-secondary" />
         </button>
@@ -122,10 +125,16 @@ export default function TopNavbar({ onMenuClick }) {
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                     Switch to {theme === 'dark' ? 'light' : 'dark'} mode
                   </button>
-                  <Link href="/" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50">
+                  <button
+                    onClick={() => {
+                      logout();
+                      router.push('/login');
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50 cursor-pointer"
+                  >
                     <LogOut className="h-4 w-4" />
-                    Back to website
-                  </Link>
+                    Sign out
+                  </button>
                 </div>
               </>
             )}

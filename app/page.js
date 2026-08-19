@@ -66,8 +66,8 @@ export default function LandingPage() {
             })}
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="btn-ghost hidden sm:inline-flex">Sign In</Link>
-            <Link href="/dashboard" className="btn-gradient">Start Free</Link>
+            <Link href="/login" className="btn-ghost hidden sm:inline-flex">Sign In</Link>
+            <Link href="/signup" className="btn-gradient">Start Free</Link>
           </div>
         </div>
       </nav>
@@ -88,10 +88,10 @@ export default function LandingPage() {
               Upload a product image or describe an idea. OmniCommerce AI creates your content, generates campaign creatives, adapts them to every channel, and helps you understand what performs.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link href="/create/content" className="btn-gradient px-6 py-3 text-base">
+              <Link href="/signup" className="btn-gradient px-6 py-3 text-base">
                 Start Creating <ArrowRight className="h-5 w-5" />
               </Link>
-              <Link href="/dashboard" className="btn-secondary px-6 py-3 text-base">View Demo</Link>
+              <Link href="/login" className="btn-secondary px-6 py-3 text-base">View Demo</Link>
             </div>
           </div>
 
@@ -226,7 +226,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/dashboard" className={`mt-6 block w-full text-center ${plan.popular ? 'btn-gradient' : 'btn-secondary'}`}>
+                <Link href="/signup" className={`mt-6 block w-full text-center ${plan.popular ? 'btn-gradient' : 'btn-secondary'}`}>
                   Get Started
                 </Link>
               </div>
@@ -262,7 +262,7 @@ export default function LandingPage() {
           <div className="rounded-3xl bg-brand-gradient p-12 text-center text-white">
             <h2 className="text-3xl font-bold">Ready to transform your commerce workflow?</h2>
             <p className="mt-4 text-white/80">Start creating content and campaigns in minutes.</p>
-            <Link href="/create/content" className="mt-8 inline-flex btn bg-white text-brand-primary hover:bg-gray-100 px-8 py-3">
+            <Link href="/signup" className="mt-8 inline-flex btn bg-white text-brand-primary hover:bg-gray-100 px-8 py-3">
               Start Creating Free <ArrowRight className="h-5 w-5" />
             </Link>
           </div>

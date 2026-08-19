@@ -13,8 +13,8 @@ const typeIcons = {
 };
 
 const quickActions = [
-  { label: 'Create Campaign', href: '/create/campaign', icon: Megaphone },
-  { label: 'Create Product', href: '/create/content', icon: Package },
+  { label: 'Create Campaign', href: '/campaigns/create', icon: Megaphone },
+  { label: 'Create Product', href: '/catalog/create', icon: Package },
   { label: 'Generate Creative', href: '/create/content', icon: Sparkles },
   { label: 'Connect Platform', href: '/connections', icon: Plug },
 ];

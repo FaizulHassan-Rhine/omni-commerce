@@ -1,9 +1,12 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { resolveImage } from '@/lib/images';
 import PlatformIcon from '@/components/ui/PlatformIcon';
-import { FileText, Play, Rocket } from 'lucide-react';
+import Select from '@/components/ui/Select';
+import PlatformNativePreview from '@/components/ui/PlatformNativePreview';
+import PostImageEditTools from '@/components/ui/PostImageEditTools';
+import { getReviewFields } from '@/lib/platform-review';
+import { FileText, Rocket } from 'lucide-react';
 
 const statusStyles = {
   ready: 'bg-brand-muted text-brand-primary',
@@ -11,21 +14,87 @@ const statusStyles = {
   published: 'bg-emerald-50 text-emerald-700',
 };
 
+function FieldEditor({ field, value, onChange }) {
+  if (field.type === 'select') {
+    return (
+      <div>
+        <label className="label">{field.label}</label>
+        <Select
+          value={field.options.includes(value) ? value : field.options[0]}
+          onChange={onChange}
+          options={field.options}
+          aria-label={field.label}
+        />
+        {field.hint && <p className="mt-1 text-[11px] text-text-muted">{field.hint}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === 'textarea') {
+    return (
+      <div>
+        <label className="label">{field.label}</label>
+        <textarea
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          rows={field.rows || 4}
+          className="input resize-none"
+        />
+        {field.hint && <p className="mt-1 text-[11px] text-text-muted">{field.hint}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className="label">{field.label}</label>
+      <input value={value || ''} onChange={(e) => onChange(e.target.value)} className="input" />
+      {field.hint && <p className="mt-1 text-[11px] text-text-muted">{field.hint}</p>}
+    </div>
+  );
+}
+
 export default function PlatformPostReview({
   posts,
   activeId,
   onSelect,
+  onChange,
   onChangeCaption,
   onDraft,
   onLaunch,
   onDraftAll,
   onLaunchAll,
   launching,
+  showImageTools = true,
+  showLaunchActions = true,
+  showBulkLaunchActions = true,
+  sidePanel = null,
 }) {
   const active = posts.find((p) => p.id === activeId) || posts[0];
   if (!active) return null;
 
   const readyCount = posts.filter((p) => p.status !== 'published').length;
+  const fields = getReviewFields(active.id);
+  const update = (key, value) => {
+    if (onChange) onChange(active.id, { [key]: value });
+    else if (key === 'caption' && onChangeCaption) onChangeCaption(active.id, value);
+  };
+  const resetImageEdits = () => {
+    if (!onChange) return;
+    onChange(active.id, {
+      imageScale: 100,
+      imageOffsetX: 0,
+      imageOffsetY: 0,
+      imageBrightness: 100,
+      imageContrast: 100,
+      overlayTitle: '',
+      overlayPosition: 'bottom-left',
+      overlaySize: 'medium',
+      overlayColor: '#FFFFFF',
+    });
+  };
+
+  const hasSideColumn = showImageTools || sidePanel;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
@@ -53,7 +122,7 @@ export default function PlatformPostReview({
               <p className="truncate text-sm font-medium text-text-primary">{post.name}</p>
               <p className="text-[11px] text-text-muted">{post.aspectLabel}</p>
             </div>
-            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize', statusStyles[post.status])}>
+            <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-semibold capitalize', statusStyles[post.status])}>
               {post.status}
             </span>
           </label>
@@ -61,80 +130,70 @@ export default function PlatformPostReview({
       </div>
 
       <div className="space-y-4">
+        <div className={cn('grid min-w-0 items-start gap-4', hasSideColumn && 'xl:grid-cols-[1fr_minmax(0,300px)]')}>
         <div className="card">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <PlatformIcon platformId={active.id} />
               <div>
-                <h3 className="font-semibold text-text-primary">{active.name} post</h3>
+                <h3 className="font-semibold text-text-primary">{active.name} preview</h3>
                 <p className="text-sm text-text-secondary">
-                  {active.mediaType === 'video' ? 'Video' : 'Image'} · {active.aspectLabel}
+                  Native {active.name} layout · {active.mediaType === 'video' ? 'Video' : 'Image'} · {active.aspectLabel}
                 </p>
               </div>
             </div>
-            <span className={cn('rounded-full px-3 py-1 text-xs font-semibold capitalize', statusStyles[active.status])}>
+            <span className={cn('rounded-md px-3 py-1 text-xs font-semibold capitalize', statusStyles[active.status])}>
               {active.status}
             </span>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(180px,280px)_1fr]">
-            <div className="mx-auto w-full max-w-[280px]">
-              <div className={cn('relative overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200', active.aspectClass)}>
-                <img src={resolveImage(active.mediaUrl)} alt={`${active.name} creative`} className="h-full w-full object-cover" />
-                {active.mediaType === 'video' && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90">
-                      <Play className="h-5 w-5 text-text-primary" />
-                    </div>
-                    <span className="absolute bottom-3 left-3 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                      Video {active.aspect}
-                    </span>
-                  </div>
-                )}
-                {active.mediaType === 'image' && (
-                  <span className="absolute bottom-3 left-3 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                    {active.aspect}
-                  </span>
-                )}
-              </div>
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(240px,340px)_1fr]">
+            <div className="h-fit w-full max-w-[340px] justify-self-start xl:sticky xl:top-24">
+              <PlatformNativePreview post={active} />
             </div>
-
             <div className="space-y-4">
-              <div>
-                <label className="label">Caption</label>
-                <textarea
-                  value={active.caption}
-                  onChange={(e) => onChangeCaption(active.id, e.target.value)}
-                  rows={7}
-                  className="input resize-none"
+              {fields.map((field) => (
+                <FieldEditor
+                  key={field.key}
+                  field={field}
+                  value={active[field.key]}
+                  onChange={(value) => update(field.key, value)}
                 />
-              </div>
-              <div>
-                <label className="label">Call to action</label>
-                <input value={active.cta} readOnly className="input bg-gray-50" />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => onDraft(active.id)}
-                  disabled={active.status === 'published' || launching}
-                  className="btn-secondary"
-                >
-                  <FileText className="h-4 w-4" /> Save as draft
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onLaunch(active.id)}
-                  disabled={active.status === 'published' || launching}
-                  className="btn-gradient"
-                >
-                  <Rocket className="h-4 w-4" /> Launch to {active.name}
-                </button>
-              </div>
+              ))}
+              {showLaunchActions && onDraft && onLaunch && (
+                <div className="flex flex-wrap gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onDraft(active.id)}
+                    disabled={active.status === 'published' || launching}
+                    className="btn-secondary"
+                  >
+                    <FileText className="h-4 w-4" /> Save as draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLaunch(active.id)}
+                    disabled={active.status === 'published' || launching}
+                    className="btn-gradient"
+                  >
+                    <Rocket className="h-4 w-4" /> Launch to {active.name}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
+        {showImageTools && (
+          <PostImageEditTools
+            post={active}
+            onChange={(patch) => onChange?.(active.id, patch)}
+            onReset={resetImageEdits}
+          />
+        )}
+        {!showImageTools && sidePanel}
+        </div>
 
+        {showBulkLaunchActions && onDraftAll && onLaunchAll && (
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button type="button" onClick={onDraftAll} disabled={launching || readyCount === 0} className="btn-secondary">
             Save all as drafts
@@ -143,6 +202,7 @@ export default function PlatformPostReview({
             {launching ? 'Launching…' : `Launch all (${readyCount})`}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

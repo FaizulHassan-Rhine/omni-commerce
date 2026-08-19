@@ -1,76 +1,28 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { dashboardNav, isNavActive } from '@/lib/navigation';
 import {
-  LayoutDashboard, Sparkles, Package, Send, Megaphone, BarChart3,
-  FolderOpen, Plug, Settings, ChevronDown, ChevronRight, X,
+  LayoutDashboard, Sparkles, Package, Megaphone, BarChart3,
+  Plug, Settings, Clapperboard, X,
 } from 'lucide-react';
 
 const iconMap = {
   LayoutDashboard,
   Sparkles,
   Package,
-  Send,
   Megaphone,
   BarChart3,
-  FolderOpen,
   Plug,
   Settings,
+  Clapperboard,
 };
 
 function NavItem({ item, pathname, collapsed, onNavigate }) {
-  const [open, setOpen] = useState(() =>
-    item.children?.some((c) => isNavActive(pathname, c.href)) ?? false
-  );
-  const isActive = item.href
-    ? isNavActive(pathname, item.href)
-    : item.children?.some((c) => isNavActive(pathname, c.href));
+  const isActive = isNavActive(pathname, item.href);
   const Icon = iconMap[item.icon];
-
-  if (item.children) {
-    return (
-      <div>
-        <button
-          onClick={() => setOpen(!open)}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer',
-            isActive ? 'text-brand-primary' : 'text-text-secondary hover:bg-gray-50'
-          )}
-        >
-          <Icon className="h-5 w-5 shrink-0" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left">{item.name}</span>
-              {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </>
-          )}
-        </button>
-        {open && !collapsed && (
-          <div className="ml-4 mt-1 space-y-0.5 border-l border-gray-200 pl-3">
-            {item.children.map((child) => (
-              <Link
-                key={child.href}
-                href={child.href}
-                onClick={onNavigate}
-                className={cn(
-                  'block rounded-lg px-3 py-2 text-sm transition-colors',
-                  isNavActive(pathname, child.href)
-                    ? 'bg-brand-gradient-subtle font-medium text-brand-primary'
-                    : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
-                )}
-              >
-                {child.name}
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <Link
@@ -132,7 +84,7 @@ export default function AppSidebar({ mobileOpen, onMobileClose }) {
 
   return (
     <>
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-gray-200/80 bg-white">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:z-30 lg:flex lg:w-56 lg:flex-col border-r border-gray-200/80 bg-white">
         {sidebarContent}
       </aside>
       {mobileOpen && (
