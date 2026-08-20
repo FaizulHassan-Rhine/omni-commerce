@@ -156,5 +156,5 @@ export function getPlatformBrandColor(platformId) {
     meta: '#0081FB',
   };
   const key = platformIconMap[platformId];
-  return colors[key] || '#3D6B8E';
+  return colors[key] || '#112E81';
 }

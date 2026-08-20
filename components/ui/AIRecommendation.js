@@ -38,9 +38,8 @@ export function ContentScore({ score, className }) {
   const bg = score >= 90 ? 'bg-emerald-100 dark:bg-emerald-900/30' : score >= 70 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-red-100 dark:bg-red-900/30';
 
   return (
-    <div className={cn('inline-flex items-center gap-1.5 rounded-lg px-2 py-1', bg, className)}>
-      <span className={cn('text-sm font-bold', color)}>{score}</span>
-      <span className="text-xs text-gray-500">/100</span>
+    <div className={cn('inline-flex items-center rounded-lg px-2 py-1', bg, className)}>
+      <span className={cn('text-sm font-bold', color)}>{score}%</span>
     </div>
   );
 }

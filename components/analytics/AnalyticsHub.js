@@ -216,7 +216,7 @@ export default function AnalyticsHub() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn('font-semibold', row.contentScore >= 85 ? 'text-emerald-600' : row.contentScore >= 70 ? 'text-amber-600' : 'text-red-500')}>
-                        {row.contentScore}/100
+                        {row.contentScore}%
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -310,7 +310,7 @@ export default function AnalyticsHub() {
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-xs text-text-muted">Score</span>
-                    <span className="text-sm font-bold text-brand-primary">{c.score}/100</span>
+                    <span className="text-sm font-bold text-brand-primary">{c.score}%</span>
                   </div>
                 </div>
               </div>

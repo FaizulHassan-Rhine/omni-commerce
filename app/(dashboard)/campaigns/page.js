@@ -9,7 +9,8 @@ import CampaignTabs from '@/components/campaign/CampaignTabs';
 import { campaigns } from '@/data/campaigns';
 import { getProduct } from '@/data/products';
 import { resolveImage } from '@/lib/images';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, getCampaignHealth } from '@/lib/utils';
+import { ContentScore } from '@/components/ui/AIRecommendation';
 import { LayoutGrid, LayoutList, Search } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
@@ -97,7 +98,7 @@ export default function CampaignsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                {['Campaign', 'Objective', 'Channels', 'Created', 'Status'].map((h) => (
+                {['Campaign', 'Objective', 'Channels', 'Created', 'Health', 'Status'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -105,6 +106,7 @@ export default function CampaignsPage() {
             <tbody>
               {filtered.map((c) => {
                 const product = getProduct(c.productId);
+                const health = getCampaignHealth(c);
                 return (
                   <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-4 py-3">
@@ -124,6 +126,9 @@ export default function CampaignsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{formatDate(c.startDate)}</td>
+                    <td className="px-4 py-3">
+                      {health != null ? <ContentScore score={health} /> : <span className="text-gray-400">—</span>}
+                    </td>
                     <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
                   </tr>
                 );
@@ -135,6 +140,7 @@ export default function CampaignsPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c) => {
             const product = getProduct(c.productId);
+            const health = getCampaignHealth(c);
             return (
               <Link key={c.id} href={`/campaigns/${c.id}`} className="card overflow-hidden transition-shadow hover:shadow-soft">
                 <img src={resolveImage(product?.image)} alt="" className="h-44 w-full object-cover" />
@@ -148,8 +154,9 @@ export default function CampaignsPage() {
                     <div className="flex -space-x-1">
                       {c.channels.map((ch) => <PlatformIcon key={ch} platformId={ch} size="sm" />)}
                     </div>
-                    <span className="text-xs text-gray-400">{formatDate(c.startDate)}</span>
+                    {health != null ? <ContentScore score={health} /> : <span className="text-xs text-gray-400">—</span>}
                   </div>
+                  <p className="text-xs text-gray-400">{formatDate(c.startDate)}</p>
                 </div>
               </Link>
             );

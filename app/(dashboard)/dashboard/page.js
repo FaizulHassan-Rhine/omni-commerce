@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 const overviewTabs = [
+  { id: 'overview', label: 'Overview' },
   { id: 'product', label: 'Product' },
   { id: 'campaign', label: 'Campaign' },
 ];
@@ -122,7 +123,7 @@ function ProductOverview() {
                 return (
                   <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-3 py-3">
-                      <Link href={`/catalog/products/${p.id}`} className="flex items-center gap-3">
+                      <Link href={`/catalog?product=${p.id}`} className="flex items-center gap-3">
                         <img src={resolveImage(p.image)} alt="" className="h-9 w-9 rounded-lg object-cover" />
                         <span className="font-medium text-brand-primary">{p.name}</span>
                       </Link>
@@ -251,8 +252,47 @@ function CampaignOverview() {
   );
 }
 
+function OverviewSummary() {
+  return (
+    <TabPanel>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <MetricCard title="Total Revenue" value={dashboardKPIs.totalRevenue.value} change={dashboardKPIs.totalRevenue.change} icon={DollarSign} />
+        <MetricCard title="Ad Spend" value={dashboardKPIs.adSpend.value} change={dashboardKPIs.adSpend.change} icon={TrendingUp} />
+        <MetricCard title="ROAS" value={dashboardKPIs.roas.value} change={dashboardKPIs.roas.change} suffix="x" icon={Target} />
+        <MetricCard title="Published Products" value={dashboardKPIs.publishedProducts.value} icon={Package} />
+        <MetricCard title="Need Attention" value={catalogSummary.needAttention} icon={AlertTriangle} />
+        <MetricCard title="Active Campaigns" value={dashboardKPIs.activeCampaigns.value} icon={Megaphone} />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <AIRecommendation title="Business insight">
+          Product listings with stronger content scores are driving better conversion, while retargeting campaigns keep the best ROAS.
+          Prioritize low-quality product fixes and scale high-performing campaigns together.
+        </AIRecommendation>
+        <AIRecommendation title="Recommended next steps">
+          Fix {catalogSummary.lowQualityImages} low-quality product images, resolve {catalogSummary.seoIssues} SEO issues, and reallocate spend
+          from weak campaigns to top performers.
+        </AIRecommendation>
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <ChartCard title="Revenue vs Ad Spend">
+          <RevenueSpendChart data={revenueVsSpend} />
+        </ChartCard>
+        <ChartCard title="Sales by Channel">
+          <SalesByChannelChart data={salesByChannel} />
+        </ChartCard>
+      </div>
+
+      <div className="mt-8">
+        <ActivityList types={['catalog', 'campaign', 'publish', 'approval', 'ai', 'sync']} viewAllHref="/notifications" viewAllLabel="View all activity" />
+      </div>
+    </TabPanel>
+  );
+}
+
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState('product');
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
     <div className="page-container pb-20 lg:pb-6">
@@ -260,13 +300,20 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Good morning, Alex</h1>
           <p className="mt-1 text-gray-500">
-            {activeTab === 'product'
+            {activeTab === 'overview'
+              ? 'Track product and campaign performance in one snapshot.'
+              : activeTab === 'product'
               ? 'Product catalog health, sales, and listings that need attention.'
               : 'Campaign spend, ROAS, and what’s performing across channels.'}
           </p>
         </div>
         <div className="flex gap-3">
-          {activeTab === 'product' ? (
+          {activeTab === 'overview' ? (
+            <>
+              <Link href="/catalog" className="btn-secondary">View Catalog</Link>
+              <Link href="/campaigns" className="btn-secondary">View Campaigns</Link>
+            </>
+          ) : activeTab === 'product' ? (
             <>
               <Link href="/catalog" className="btn-secondary">View Catalog</Link>
               <Link href="/catalog/create" className="btn-gradient"><Plus className="h-4 w-4" /> Create Product</Link>
@@ -282,7 +329,7 @@ export default function DashboardPage() {
 
       <Tabs tabs={overviewTabs} activeTab={activeTab} onChange={setActiveTab} />
 
-      {activeTab === 'product' ? <ProductOverview /> : <CampaignOverview />}
+      {activeTab === 'overview' ? <OverviewSummary /> : activeTab === 'product' ? <ProductOverview /> : <CampaignOverview />}
     </div>
   );
 }

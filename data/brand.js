@@ -1,9 +1,9 @@
 export const brandKit = {
   brandName: 'Nova Commerce',
   logo: null,
-  primaryColor: '#6366F1',
-  secondaryColor: '#8B5CF6',
-  accentColor: '#06B6D4',
+  primaryColor: '#112E81',
+  secondaryColor: '#4647AE',
+  accentColor: '#4382DF',
   fonts: {
     heading: 'Inter',
     body: 'Inter',
@@ -28,8 +28,8 @@ export const calendarEvents = [
 ];
 
 export const searchItems = [
-  { id: 's-1', type: 'product', title: 'Classic Leather Wallet', href: '/catalog/products/prod-1' },
-  { id: 's-2', type: 'product', title: 'Premium Watch Strap', href: '/catalog/products/prod-2' },
+  { id: 's-1', type: 'product', title: 'Classic Leather Wallet', href: '/catalog?product=prod-1' },
+  { id: 's-2', type: 'product', title: 'Premium Watch Strap', href: '/catalog?product=prod-2' },
   { id: 's-3', type: 'campaign', title: 'Summer Leather Collection', href: '/campaigns/camp-1' },
   { id: 's-4', type: 'campaign', title: 'Watch Strap Launch', href: '/campaigns/camp-2' },
   { id: 's-5', type: 'creative', title: 'Summer Collection — Lifestyle', href: '/analytics/creative-intelligence' },

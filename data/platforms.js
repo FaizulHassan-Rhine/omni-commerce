@@ -69,7 +69,7 @@ export function getPlatform(id) {
   return (
     allPlatforms.find((p) => p.id === id) ||
     platforms.publishing.find((p) => p.id === id) ||
-    { id, name: id, color: '#6366F1' }
+    { id, name: id, color: '#112E81' }
   );
 }
 

@@ -9,7 +9,7 @@ const statusConfig = {
   published: { icon: CheckCircle, color: 'text-emerald-500', label: 'Published' },
   success: { icon: CheckCircle, color: 'text-emerald-500', label: 'Published' },
   review: { icon: AlertCircle, color: 'text-amber-500', label: 'Needs Review' },
-  pending: { icon: Clock, color: 'text-gray-400', label: 'Pending' },
+  pending: { icon: Clock, color: 'text-amber-600', label: 'Awaiting approval' },
   loading: { icon: Loader2, color: 'text-brand-primary animate-spin', label: 'Publishing...' },
   error: { icon: AlertCircle, color: 'text-red-500', label: 'Failed' },
 };

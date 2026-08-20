@@ -1,27 +1,103 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import ProductTabs from '@/components/product/ProductTabs';
-import { products } from '@/data/products';
+import ProductDetailDrawer from '@/components/product/ProductDetailDrawer';
+import { ContentScore } from '@/components/ui/AIRecommendation';
+import { getProduct, products } from '@/data/products';
+import { campaigns } from '@/data/campaigns';
 import { resolveImage } from '@/lib/images';
 import { formatDate, cn } from '@/lib/utils';
 import { LayoutGrid, LayoutList, Search } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
 const STATUS_FILTERS = ['All', 'Approved', 'Pending', 'Rejected', 'Draft'];
+const productsInCampaign = new Set(campaigns.map((c) => c.productId));
+
+function withProductState(product, overrides = {}) {
+  if (!product) return null;
+  return {
+    ...product,
+    published: product.status === 'Approved',
+    ...overrides[product.id],
+  };
+}
+
+function CampaignAction({ productId }) {
+  const inCampaign = productsInCampaign.has(productId);
+
+  if (inCampaign) {
+    return (
+      <Link href="/campaigns" className="btn-secondary py-1.5 text-xs whitespace-nowrap">
+        Already in campaign
+      </Link>
+    );
+  }
+
+  return (
+    <Link href={`/campaigns/create?product=${productId}`} className="btn-gradient py-1.5 text-xs whitespace-nowrap">
+      Start campaign
+    </Link>
+  );
+}
 
 export default function CatalogPage() {
+  return (
+    <Suspense fallback={<div className="page-container pb-20 text-sm text-gray-500">Loading products...</div>}>
+      <CatalogPageContent />
+    </Suspense>
+  );
+}
+
+function CatalogPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [view, setView] = useState('list');
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productOverrides, setProductOverrides] = useState({});
+
+  useEffect(() => {
+    const productId = searchParams.get('product');
+    setSelectedProduct(productId ? withProductState(getProduct(productId), productOverrides) : null);
+  }, [searchParams, productOverrides]);
+
+  const openProduct = useCallback((product) => {
+    setSelectedProduct(withProductState(product, productOverrides));
+    router.replace(`/catalog?product=${product.id}`, { scroll: false });
+  }, [router, productOverrides]);
+
+  const closeProduct = useCallback(() => {
+    setSelectedProduct(null);
+    router.replace('/catalog', { scroll: false });
+  }, [router]);
+
+  const updateSelectedProduct = useCallback((patch) => {
+    setSelectedProduct((current) => {
+      if (!current) return current;
+      return { ...current, ...patch };
+    });
+    setProductOverrides((prev) => {
+      const id = searchParams.get('product');
+      if (!id) return prev;
+      return { ...prev, [id]: { ...prev[id], ...patch } };
+    });
+  }, [searchParams]);
+
+  const catalogProducts = useMemo(
+    () => products.map((p) => withProductState(p, productOverrides)),
+    [productOverrides]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return products.filter((p) => {
+    return catalogProducts.filter((p) => {
       const matchStatus = statusFilter === 'All' || p.status === statusFilter;
       const matchSearch =
         !q ||
@@ -30,7 +106,7 @@ export default function CatalogPage() {
         p.sku.toLowerCase().includes(q);
       return matchStatus && matchSearch;
     });
-  }, [search, statusFilter]);
+  }, [search, statusFilter, catalogProducts]);
 
   return (
     <div className="page-container pb-20">
@@ -95,19 +171,23 @@ export default function CatalogPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                {['Product', 'Category', 'Channels', 'Created', 'Status'].map((h) => (
+                {['Product', 'Category', 'Channels', 'Created', 'Health', 'Status', 'Campaign'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr
+                  key={p.id}
+                  className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
+                  onClick={() => openProduct(p)}
+                >
                   <td className="px-4 py-3">
-                    <Link href={`/catalog/products/${p.id}`} className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                       <img src={resolveImage(p.image)} alt="" className="h-10 w-10 rounded-lg object-cover" />
                       <span className="font-medium text-brand-primary">{p.name}</span>
-                    </Link>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.category}</td>
                   <td className="px-4 py-3">
@@ -116,7 +196,11 @@ export default function CatalogPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
+                  <td className="px-4 py-3"><ContentScore score={p.contentScore} /></td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                  <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                    <CampaignAction productId={p.id} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -125,11 +209,11 @@ export default function CatalogPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((p) => (
-            <Link key={p.id} href={`/catalog/products/${p.id}`} className="card overflow-hidden transition-shadow hover:shadow-soft">
+            <div key={p.id} className="card cursor-pointer overflow-hidden p-0" onClick={() => openProduct(p)}>
               <img src={resolveImage(p.image)} alt="" className="h-44 w-full object-cover" />
               <div className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-gray-900">{p.name}</h3>
+                  <h3 className="font-semibold text-gray-900 hover:text-brand-primary">{p.name}</h3>
                   <StatusBadge status={p.status} />
                 </div>
                 <p className="text-sm text-gray-500">{p.category}</p>
@@ -137,13 +221,17 @@ export default function CatalogPage() {
                   <div className="flex -space-x-1">
                     {p.channels.map((ch) => <PlatformIcon key={ch} platformId={ch} size="sm" />)}
                   </div>
-                  <span className="text-xs text-gray-400">{p.createdAt ? formatDate(p.createdAt) : ''}</span>
+                  <ContentScore score={p.contentScore} />
+                </div>
+                <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
+                  <CampaignAction productId={p.id} />
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
+      <ProductDetailDrawer product={selectedProduct} onClose={closeProduct} onUpdate={updateSelectedProduct} />
     </div>
   );
 }

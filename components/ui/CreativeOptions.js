@@ -71,7 +71,7 @@ export function formatContentTypes(contentTypes) {
   return types.length ? types.join(' + ') : 'None';
 }
 
-export default function CreativeOptions({ value, onChange, className }) {
+export default function CreativeOptions({ value, onChange, className, mediaOnly = false }) {
   const update = (key, val) => onChange({ ...value, [key]: val });
 
   const toggleContentType = (type, checked) => {
@@ -85,7 +85,9 @@ export default function CreativeOptions({ value, onChange, className }) {
     <div className={cn('card space-y-4 h-fit', className)}>
       <div>
         <h3 className="font-semibold text-text-primary">Creative settings</h3>
-        <p className="text-sm text-text-secondary mt-0.5">Configure content type, visuals, and description length.</p>
+        <p className="text-sm text-text-secondary mt-0.5">
+          {mediaOnly ? 'Choose image, video, or both, then tune the look.' : 'Configure content type, visuals, and description length.'}
+        </p>
       </div>
 
       <div>
@@ -109,16 +111,18 @@ export default function CreativeOptions({ value, onChange, className }) {
         <p className="mt-1.5 text-xs text-text-muted">Select image, video, or both.</p>
       </div>
 
-      <OptionGroup label="Description size">
-        {DESCRIPTION_SIZES.map((size) => (
-          <OptionChip
-            key={size}
-            label={size}
-            selected={value.descriptionSize === size}
-            onClick={() => update('descriptionSize', size)}
-          />
-        ))}
-      </OptionGroup>
+      {!mediaOnly && (
+        <OptionGroup label="Description size">
+          {DESCRIPTION_SIZES.map((size) => (
+            <OptionChip
+              key={size}
+              label={size}
+              selected={value.descriptionSize === size}
+              onClick={() => update('descriptionSize', size)}
+            />
+          ))}
+        </OptionGroup>
+      )}
 
       <OptionGroup label="Background">
         {CREATIVE_BACKGROUNDS.map((b) => (

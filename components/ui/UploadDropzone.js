@@ -3,7 +3,9 @@
 import { cn } from '@/lib/utils';
 import { ImagePlus, Upload, X } from 'lucide-react';
 import { useId, useState } from 'react';
-import { getPlaceholderImage } from '@/lib/images';
+import { resolveImage } from '@/lib/images';
+import { useApp } from '@/context/AppContext';
+import Modal from '@/components/ui/Modal';
 
 const ACCEPT = 'image/png,image/jpeg,image/jpg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif';
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -24,11 +26,13 @@ export default function UploadDropzone({
   multiple = false,
   className,
 }) {
+  const { studioAssets } = useApp();
   const inputId = `product-upload-${useId().replace(/:/g, '')}`;
   const [internalFiles, setInternalFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [reading, setReading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const files = filesProp ?? internalFiles;
 
@@ -70,7 +74,7 @@ export default function UploadDropzone({
       );
       commit(multiple ? [...files, ...mapped] : mapped);
     } catch {
-      setError('Could not read that image. Try another file or use the sample image.');
+      setError('Could not read that image. Try another file or choose one from Content Studio.');
     } finally {
       setReading(false);
     }
@@ -80,17 +84,19 @@ export default function UploadDropzone({
     commit(files.filter((f) => f.id !== id));
   };
 
-  const useSample = () => {
+  const chooseFromStudio = (asset) => {
     setError('');
-    commit([
-      {
-        id: 'sample-product',
-        name: 'sample-product.png',
-        preview: getPlaceholderImage('product', 0),
-        file: null,
-      },
-    ]);
+    const next = {
+      id: `studio-${asset.id}`,
+      name: asset.name || 'studio-image',
+      preview: resolveImage(asset.src),
+      file: null,
+    };
+    commit(multiple ? [...files.filter((item) => item.id !== next.id), next] : [next]);
+    setLibraryOpen(false);
   };
+
+  const libraryImages = studioAssets.filter((asset) => asset.type === 'image');
 
   return (
     <div className={cn('relative space-y-3', className)}>
@@ -189,11 +195,30 @@ export default function UploadDropzone({
 
       <button
         type="button"
-        onClick={useSample}
-        className="text-sm font-medium text-brand-primary hover:underline"
+        onClick={() => setLibraryOpen(true)}
+        className="btn-secondary"
       >
-        Use a sample product image
+        <ImagePlus className="h-4 w-4" /> Choose from Content Studio
       </button>
+
+      <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Choose from Content Studio" size="xl">
+        {libraryImages.length === 0 ? (
+          <p className="py-8 text-center text-sm text-text-muted">No images in Content Studio yet.</p>
+        ) : (
+          <div className="grid max-h-[60vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4">
+            {libraryImages.map((asset) => (
+              <button
+                key={asset.id}
+                type="button"
+                onClick={() => chooseFromStudio(asset)}
+                className="overflow-hidden rounded-xl border border-gray-200 text-left transition-colors hover:border-brand-primary"
+              >
+                <img src={resolveImage(asset.src)} alt="" className="aspect-square w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>

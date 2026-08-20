@@ -11,6 +11,7 @@ import { FileText, Rocket } from 'lucide-react';
 const statusStyles = {
   ready: 'bg-brand-muted text-brand-primary',
   draft: 'bg-amber-50 text-amber-700',
+  pending: 'bg-amber-50 text-amber-700',
   published: 'bg-emerald-50 text-emerald-700',
 };
 
@@ -73,7 +74,7 @@ export default function PlatformPostReview({
   const active = posts.find((p) => p.id === activeId) || posts[0];
   if (!active) return null;
 
-  const readyCount = posts.filter((p) => p.status !== 'published').length;
+  const readyCount = posts.filter((p) => p.status !== 'published' && p.status !== 'pending').length;
   const fields = getReviewFields(active.id);
   const update = (key, value) => {
     if (onChange) onChange(active.id, { [key]: value });
@@ -122,8 +123,8 @@ export default function PlatformPostReview({
               <p className="truncate text-sm font-medium text-text-primary">{post.name}</p>
               <p className="text-[11px] text-text-muted">{post.aspectLabel}</p>
             </div>
-            <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-semibold capitalize', statusStyles[post.status])}>
-              {post.status}
+            <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-semibold capitalize', statusStyles[post.status] || statusStyles.ready)}>
+              {post.status === 'pending' ? 'Awaiting approval' : post.status}
             </span>
           </label>
         ))}
@@ -142,8 +143,8 @@ export default function PlatformPostReview({
                 </p>
               </div>
             </div>
-            <span className={cn('rounded-md px-3 py-1 text-xs font-semibold capitalize', statusStyles[active.status])}>
-              {active.status}
+            <span className={cn('rounded-md px-3 py-1 text-xs font-semibold capitalize', statusStyles[active.status] || statusStyles.ready)}>
+              {active.status === 'pending' ? 'Awaiting approval' : active.status}
             </span>
           </div>
 
@@ -165,7 +166,7 @@ export default function PlatformPostReview({
                   <button
                     type="button"
                     onClick={() => onDraft(active.id)}
-                    disabled={active.status === 'published' || launching}
+                    disabled={active.status === 'published' || active.status === 'pending' || launching}
                     className="btn-secondary"
                   >
                     <FileText className="h-4 w-4" /> Save as draft
@@ -173,10 +174,11 @@ export default function PlatformPostReview({
                   <button
                     type="button"
                     onClick={() => onLaunch(active.id)}
-                    disabled={active.status === 'published' || launching}
+                    disabled={active.status === 'published' || active.status === 'pending' || launching}
                     className="btn-gradient"
                   >
-                    <Rocket className="h-4 w-4" /> Launch to {active.name}
+                    <Rocket className="h-4 w-4" />
+                    {active.status === 'pending' ? 'Awaiting approval' : `Launch to ${active.name}`}
                   </button>
                 </div>
               )}
@@ -199,7 +201,7 @@ export default function PlatformPostReview({
             Save all as drafts
           </button>
           <button type="button" onClick={onLaunchAll} disabled={launching || readyCount === 0} className="btn-gradient">
-            {launching ? 'Launching…' : `Launch all (${readyCount})`}
+            {launching ? 'Submitting…' : `Launch all (${readyCount})`}
           </button>
         </div>
         )}

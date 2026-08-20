@@ -12,7 +12,7 @@ function PreviewFrame({ children, className }) {
   );
 }
 
-function Avatar({ letter = 'N', color = '#3D6B8E' }) {
+function Avatar({ letter = 'N', color = '#112E81' }) {
   return (
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: color }}>
       {letter}

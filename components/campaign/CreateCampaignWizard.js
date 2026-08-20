@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import ProgressStepper from '@/components/ui/ProgressStepper';
 import UploadDropzone, { PromptInput } from '@/components/ui/UploadDropzone';
@@ -13,13 +13,15 @@ import AIRecommendation, { AIConfidenceBadge } from '@/components/ui/AIRecommend
 import Tabs, { TabPanel } from '@/components/ui/Tabs';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CreativeOptions, { defaultCreativeOptions, formatContentTypes } from '@/components/ui/CreativeOptions';
-import { products } from '@/data/products';
+import { products, getProduct } from '@/data/products';
 import { resolveImage } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { generateCampaignAds } from '@/lib/campaign-review';
 import { AI_CAMPAIGN_STAGES, generateCampaignContent, generatePlatformAudienceSuggestions, generatePlatformBudgetPlan, simulateAIProcessing } from '@/lib/mock-ai';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, ArrowLeft, Sparkles, Wand2, Search } from 'lucide-react';
+import Link from 'next/link';
 
 const steps = [
   { id: 'product', label: 'Choose Product' },
@@ -42,13 +44,15 @@ const adPlatforms = [
 ];
 
 export default function CreateCampaignWizard() {
-  const router = useRouter();
-  const { addToast } = useApp();
-  const [step, setStep] = useState(0);
+  const searchParams = useSearchParams();
+  const presetProduct = getProduct(searchParams.get('product'));
+  const { addToast, submitApprovals } = useApp();
+  const { user } = useAuth();
+  const [step, setStep] = useState(presetProduct ? 1 : 0);
   const [prompt, setPrompt] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(presetProduct || null);
   const [creativeOptions, setCreativeOptions] = useState(defaultCreativeOptions);
   const canContinue = uploadedFiles.length > 0 || !!selectedProduct;
   const [objective, setObjective] = useState('Sales');
@@ -65,15 +69,12 @@ export default function CreateCampaignWizard() {
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [allocations, setAllocations] = useState({});
   const [launchStage, setLaunchStage] = useState(-1);
-  const [launchComplete, setLaunchComplete] = useState(false);
+  const [submittedForApproval, setSubmittedForApproval] = useState(false);
 
   const launchStages = [
-    'Preparing creative assets...',
-    'Validating platform requirements...',
-    'Uploading Meta campaign...',
-    'Uploading Google campaign...',
-    'Configuring TikTok campaign...',
-    'Campaign launched successfully.',
+    'Preparing campaign for review...',
+    'Sending creatives to Approval Center...',
+    'Queued for Admin or Moderator approval.',
   ];
 
   const handleGenerateAudience = () => {
@@ -213,14 +214,27 @@ export default function CreateCampaignWizard() {
   });
 
   const handleLaunch = async () => {
+    const adsToSubmit = campaignAds.length > 0
+      ? campaignAds
+      : [{ id: 'campaign', name: 'Campaign', mediaUrl: campaign?.squareCreative || campaign?.generatedImage }];
+    submitApprovals(
+      adsToSubmit.map((ad) => ({
+        type: 'campaign',
+        asset: ad.mediaUrl || campaign?.squareCreative || campaign?.generatedImage,
+        assetName: `${campaign?.campaignName || 'Campaign'} — ${ad.name}`,
+        campaign: campaign?.campaignName || 'Ad campaign',
+        platform: ad.name,
+        sourceId: ad.id,
+      })),
+      user?.name || 'Alex Morgan'
+    );
     setStep(7);
     for (let i = 0; i < launchStages.length; i++) {
       setLaunchStage(i);
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 700));
     }
-    setLaunchComplete(true);
-    addToast('success', 'Campaign launched successfully!');
-    setTimeout(() => router.push('/campaigns/camp-1'), 2000);
+    setSubmittedForApproval(true);
+    addToast('success', 'Campaign sent for approval. It will publish after Admin or Moderator approval.');
   };
 
   return (
@@ -312,6 +326,15 @@ export default function CreateCampaignWizard() {
 
       {step === 1 && (
         <div className="mx-auto max-w-2xl animate-fade-in">
+          {selectedProduct && (
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-gray-200/70 bg-white px-3 py-2.5">
+              <img src={resolveImage(selectedProduct.image)} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-text-primary">{selectedProduct.name}</p>
+                <p className="text-xs text-text-muted">SKU: {selectedProduct.sku} · {selectedProduct.category}</p>
+              </div>
+            </div>
+          )}
           <div className="card">
             <h3 className="font-semibold mb-4">Campaign Objective</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -606,7 +629,7 @@ export default function CreateCampaignWizard() {
 
       {step === 7 && (
         <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
-          {!launchComplete ? (
+          {!submittedForApproval ? (
             <>
               <div className="card">
                 <h3 className="font-semibold mb-4">Campaign Review</h3>
@@ -663,9 +686,15 @@ export default function CreateCampaignWizard() {
             </>
           ) : (
             <div className="card text-center py-8">
-              <Sparkles className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold">Campaign launched successfully!</h3>
-              <p className="text-gray-500 mt-2">Redirecting to campaign dashboard...</p>
+              <Sparkles className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold">Sent for approval</h3>
+              <p className="text-gray-500 mt-2">
+                This campaign will publish after an Admin or Moderator approves it.
+              </p>
+              <div className="mt-6 flex justify-center gap-3">
+                <Link href="/approvals" className="btn-gradient">Go to Approval Center</Link>
+                <Link href="/campaigns" className="btn-secondary">View campaigns</Link>
+              </div>
             </div>
           )}
         </div>

@@ -53,7 +53,7 @@ export const platformDistribution = [
   { name: 'Google Ads', value: 28, color: '#4285F4' },
   { name: 'Amazon', value: 18, color: '#FF9900' },
   { name: 'TikTok', value: 12, color: '#000000' },
-  { name: 'Other', value: 7, color: '#6366F1' },
+  { name: 'Other', value: 7, color: '#AACCD6' },
 ];
 
 export const performanceMetrics = {

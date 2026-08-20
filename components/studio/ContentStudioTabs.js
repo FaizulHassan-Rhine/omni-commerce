@@ -3,8 +3,8 @@
 import { cn } from '@/lib/utils';
 
 const tabs = [
-  { id: 'products', label: 'Products' },
-  { id: 'campaigns', label: 'Campaigns' },
+  { id: 'image', label: 'Image' },
+  { id: 'video', label: 'Video' },
 ];
 
 export default function ContentStudioTabs({ activeTab, onChange }) {

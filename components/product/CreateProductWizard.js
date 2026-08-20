@@ -14,14 +14,18 @@ import {
   AI_CONTENT_STAGES,
   AI_LINK_STAGES,
   AI_PLATFORM_STAGES,
+  FETCH_LINK_STAGES,
+  fetchProductFromLink,
   generateProductContent,
   generatePlatformPosts,
   simulateAIProcessing,
 } from '@/lib/mock-ai';
 import CreativeOptions, { defaultCreativeOptions, formatContentTypes } from '@/components/ui/CreativeOptions';
 import { getPlaceholderImage, resolveImage } from '@/lib/images';
+import { formatCurrency } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
-import { ArrowRight, ArrowLeft, Sparkles, Link2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ArrowRight, ArrowLeft, Sparkles, Link2, Download, Loader2 } from 'lucide-react';
 
 const uploadSteps = [
   { id: 'input', label: 'Upload Product' },
@@ -29,7 +33,7 @@ const uploadSteps = [
   { id: 'review', label: 'Review Content' },
   { id: 'channels', label: 'Select Channels' },
   { id: 'posts', label: 'Review Posts' },
-  { id: 'publish', label: 'Publish' },
+  { id: 'publish', label: 'Approval' },
 ];
 
 const linkSteps = [
@@ -38,7 +42,7 @@ const linkSteps = [
   { id: 'review', label: 'Review Content' },
   { id: 'channels', label: 'Select Channels' },
   { id: 'posts', label: 'Review Posts' },
-  { id: 'publish', label: 'Publish' },
+  { id: 'publish', label: 'Approval' },
 ];
 
 function isValidProductUrl(value) {
@@ -54,10 +58,14 @@ function isValidProductUrl(value) {
 export default function CreateProductWizard({ mode = 'upload' }) {
   const isLink = mode === 'link';
   const steps = isLink ? linkSteps : uploadSteps;
-  const { addToast } = useApp();
+  const { addToast, submitApprovals } = useApp();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [prompt, setPrompt] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
+  const [fetchedProduct, setFetchedProduct] = useState(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchStage, setFetchStage] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [creativeOptions, setCreativeOptions] = useState(defaultCreativeOptions);
   const [generatedImages, setGeneratedImages] = useState([]);
@@ -69,24 +77,35 @@ export default function CreateProductWizard({ mode = 'upload' }) {
   const [publishResults, setPublishResults] = useState(null);
   const [publishing, setPublishing] = useState(false);
 
-  const canGenerate = isLink ? isValidProductUrl(sourceUrl) : uploadedFiles.length > 0;
+  const canGenerate = isLink ? Boolean(fetchedProduct) : uploadedFiles.length > 0;
   const analysisStages = isLink ? AI_LINK_STAGES : AI_CONTENT_STAGES;
+
+  const handleFetchLink = async () => {
+    if (!isValidProductUrl(sourceUrl) || fetching) return;
+    setFetching(true);
+    setFetchedProduct(null);
+    setFetchStage(0);
+    await simulateAIProcessing(FETCH_LINK_STAGES, (stage) => setFetchStage(stage), 550);
+    setFetchedProduct(fetchProductFromLink(sourceUrl));
+    setFetching(false);
+  };
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
     setStep(1);
     await simulateAIProcessing(analysisStages, (stage) => setAiStage(stage));
-    const generated = generateProductContent(isLink ? sourceUrl : (prompt || 'Classic Leather Wallet'), {
-      notes: isLink ? prompt : undefined,
+    const generated = generateProductContent(isLink ? (fetchedProduct?.name || sourceUrl) : (prompt || 'Classic Leather Wallet'), {
       sourceUrl: isLink ? sourceUrl : undefined,
     });
     if (uploadedFiles[0]?.preview) {
       generated.generatedImage = uploadedFiles[0].preview;
+    } else if (isLink && fetchedProduct?.image) {
+      generated.generatedImage = fetchedProduct.image;
     }
     generated.creativeOptions = creativeOptions;
     setGeneratedImages(
       Array.from({ length: isLink ? 1 : creativeOptions.outputCount }, (_, i) =>
-        uploadedFiles[0]?.preview || getPlaceholderImage('product', i)
+        uploadedFiles[0]?.preview || fetchedProduct?.image || getPlaceholderImage('product', i)
       )
     );
     setContent(generated);
@@ -124,37 +143,55 @@ export default function CreateProductWizard({ mode = 'upload' }) {
   };
 
   const handleDraftAll = () => {
-    setPlatformPosts((prev) => prev.map((post) => (post.status === 'published' ? post : { ...post, status: 'draft' })));
+    setPlatformPosts((prev) => prev.map((post) => (
+      post.status === 'published' || post.status === 'pending' ? post : { ...post, status: 'draft' }
+    )));
     addToast('success', 'All posts saved as drafts');
+  };
+
+  const submitPostsForApproval = (posts) => {
+    submitApprovals(
+      posts.map((post) => ({
+        type: 'product',
+        asset: post.mediaUrl || content?.generatedImage,
+        assetName: `${content?.title || 'Product'} — ${post.name}`,
+        campaign: content?.title || 'Product listing',
+        platform: post.name,
+        sourceId: post.id,
+      })),
+      user?.name || 'Alex Morgan'
+    );
   };
 
   const handleLaunchPost = async (id) => {
     const post = platformPosts.find((p) => p.id === id);
-    if (!post || post.status === 'published') return;
+    if (!post || post.status === 'published' || post.status === 'pending') return;
     setPublishing(true);
-    await new Promise((r) => setTimeout(r, 700));
-    updatePost(id, { status: 'published' });
+    await new Promise((r) => setTimeout(r, 500));
+    submitPostsForApproval([post]);
+    updatePost(id, { status: 'pending' });
     setPublishing(false);
-    addToast('success', `Launched to ${post.name}`);
+    addToast('success', `Sent to approval. ${post.name} will publish after Admin or Moderator approval.`);
   };
 
   const handleLaunchAll = async () => {
+    const pending = platformPosts.filter((p) => p.status !== 'published' && p.status !== 'pending');
+    if (pending.length === 0) return;
     setStep(5);
     setPublishing(true);
-    const results = [];
-    const pending = platformPosts.filter((p) => p.status !== 'published');
-    for (const post of pending) {
-      await new Promise((r) => setTimeout(r, 700));
-      results.push({
-        platform: post.name,
-        status: 'published',
-        message: post.status === 'draft' ? 'Published from draft' : 'Published',
-      });
-      setPublishResults([...results]);
-      updatePost(post.id, { status: 'published' });
-    }
+    submitPostsForApproval(pending);
+    const results = pending.map((post) => ({
+      platform: post.name,
+      status: 'pending',
+      message: 'Awaiting approval',
+    }));
+    setPlatformPosts((prev) => prev.map((post) => (
+      pending.some((item) => item.id === post.id) ? { ...post, status: 'pending' } : post
+    )));
+    await new Promise((r) => setTimeout(r, 600));
+    setPublishResults(results);
     setPublishing(false);
-    addToast('success', 'All selected posts launched');
+    addToast('success', 'Sent to approval. Posts will publish after Admin or Moderator approval.');
   };
 
   const resetWizard = () => {
@@ -166,6 +203,9 @@ export default function CreateProductWizard({ mode = 'upload' }) {
     setSelectedChannels([]);
     setSourceUrl('');
     setPrompt('');
+    setFetchedProduct(null);
+    setFetching(false);
+    setFetchStage(0);
   };
 
   return (
@@ -174,7 +214,7 @@ export default function CreateProductWizard({ mode = 'upload' }) {
         title="AI Content Creation"
         subtitle={
           isLink
-            ? 'Paste a product link to generate content. Add a note optionally for more context.'
+            ? 'Paste a product link, fetch the listing, then generate content with AI.'
             : 'Upload a product image to generate content. Add a prompt optionally for more context.'
         }
       />
@@ -219,7 +259,7 @@ export default function CreateProductWizard({ mode = 'upload' }) {
             <div>
               <h3 className="font-semibold text-text-primary mb-1">Paste product link</h3>
               <p className="text-sm text-text-secondary">
-                Add a Shopify, Amazon, or store URL. AI will read the page and draft listing content.
+                Add a Shopify, Amazon, or store URL. Fetch the listing first, then continue to AI analysis.
               </p>
             </div>
             <div>
@@ -229,31 +269,89 @@ export default function CreateProductWizard({ mode = 'upload' }) {
                 <input
                   type="url"
                   value={sourceUrl}
-                  onChange={(e) => setSourceUrl(e.target.value)}
+                  onChange={(e) => {
+                    setSourceUrl(e.target.value);
+                    setFetchedProduct(null);
+                  }}
                   placeholder="https://yourstore.com/products/classic-leather-wallet"
                   className="input pl-10"
                 />
               </div>
             </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <label className="label mb-0">Write something</label>
-                <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-text-muted">Optional</span>
+            <button
+              type="button"
+              onClick={handleFetchLink}
+              disabled={!isValidProductUrl(sourceUrl) || fetching}
+              className="btn-primary w-full py-3"
+            >
+              {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {fetching ? 'Fetching...' : 'Fetch'}
+            </button>
+
+            {fetching && (
+              <div className="space-y-2 rounded-xl border border-gray-200/70 bg-gray-50 p-4">
+                {FETCH_LINK_STAGES.map((stage, index) => (
+                  <div key={stage} className="flex items-center gap-2 text-sm">
+                    <div
+                      className={
+                        index < fetchStage
+                          ? 'h-1.5 w-1.5 rounded-full bg-emerald-500'
+                          : index === fetchStage
+                            ? 'h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse'
+                            : 'h-1.5 w-1.5 rounded-full bg-gray-300'
+                      }
+                    />
+                    <span className={index <= fetchStage ? 'text-text-primary' : 'text-text-muted'}>{stage}</span>
+                  </div>
+                ))}
               </div>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={4}
-                placeholder="Add extra context — tone, audience, or what to emphasize…"
-                className="input resize-none"
-              />
-            </div>
+            )}
+
+            {fetchedProduct && !fetching && (
+              <div className="grid grid-cols-1 gap-4 rounded-xl border border-gray-200/70 bg-gray-50 p-4 sm:grid-cols-2">
+                <img
+                  src={resolveImage(fetchedProduct.image)}
+                  alt={fetchedProduct.name}
+                  className="aspect-square w-full rounded-xl object-cover"
+                />
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-text-muted">{fetchedProduct.store}</p>
+                    <h4 className="mt-1 text-lg font-semibold text-text-primary">{fetchedProduct.name}</h4>
+                    <p className="mt-1 text-sm text-text-muted">SKU: {fetchedProduct.sku} · {fetchedProduct.category}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Price', value: formatCurrency(fetchedProduct.price) },
+                      { label: 'Inventory', value: fetchedProduct.stock },
+                      { label: 'Color', value: fetchedProduct.color },
+                      { label: 'Material', value: fetchedProduct.material },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-xl bg-white p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-text-muted">{item.label}</p>
+                        <p className="mt-0.5 text-sm font-semibold text-text-primary">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm leading-relaxed text-text-secondary">{fetchedProduct.description}</p>
+                  {fetchedProduct.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {fetchedProduct.tags.map((tag) => (
+                        <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs text-text-secondary ring-1 ring-gray-200">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <button onClick={handleGenerate} disabled={!canGenerate} className="btn-gradient w-full py-3">
             Next <ArrowRight className="h-4 w-4" />
           </button>
-          {!canGenerate && (
-            <p className="text-center text-sm text-text-muted">Paste a valid product URL to continue.</p>
+          {!fetchedProduct && !fetching && (
+            <p className="text-center text-sm text-text-muted">Paste a valid product URL and click Fetch to continue.</p>
           )}
         </div>
       )}
@@ -391,16 +489,19 @@ export default function CreateProductWizard({ mode = 'upload' }) {
       {step === 5 && (
         <div className="mx-auto max-w-2xl space-y-6 animate-fade-in">
           <div className="card">
-            <h3 className="font-semibold text-text-primary dark:text-white mb-4">
-              {publishing ? 'Publishing in progress...' : 'Publishing complete!'}
+            <h3 className="font-semibold text-text-primary dark:text-white mb-2">
+              {publishing ? 'Sending for approval...' : 'Sent for approval'}
             </h3>
+            <p className="mb-4 text-sm text-text-secondary">
+              These posts will publish after an Admin or Moderator approves them in Approval Center.
+            </p>
             {publishResults && <PublishingStatus items={publishResults} />}
           </div>
           {!publishing && (
             <div className="flex gap-3 justify-center">
+              <Link href="/approvals" className="btn-gradient">Go to Approval Center</Link>
               <Link href="/catalog" className="btn-secondary">View Catalog</Link>
-              <Link href="/campaigns/create" className="btn-secondary">Make Campaign</Link>
-              <button type="button" className="btn-gradient" onClick={resetWizard}>
+              <button type="button" className="btn-secondary" onClick={resetWizard}>
                 Create Another
               </button>
             </div>

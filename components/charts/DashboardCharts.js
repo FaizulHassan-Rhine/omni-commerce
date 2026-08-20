@@ -23,8 +23,8 @@ export function RevenueSpendChart({ data }) {
         <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
         <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb' }} />
         <Legend />
-        <Line type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={2} dot={false} name="Revenue" />
-        <Line type="monotone" dataKey="spend" stroke="#06B6D4" strokeWidth={2} dot={false} name="Ad Spend" />
+        <Line type="monotone" dataKey="revenue" stroke="#112E81" strokeWidth={2} dot={false} name="Revenue" />
+        <Line type="monotone" dataKey="spend" stroke="#4382DF" strokeWidth={2} dot={false} name="Ad Spend" />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -38,7 +38,7 @@ export function RoasTrendChart({ data }) {
         <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
         <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" domain={[0, 'auto']} />
         <Tooltip contentStyle={{ borderRadius: '12px' }} />
-        <Line type="monotone" dataKey="roas" stroke="#8B5CF6" strokeWidth={2} dot={{ fill: '#8B5CF6' }} name="ROAS" />
+        <Line type="monotone" dataKey="roas" stroke="#4647AE" strokeWidth={2} dot={{ fill: '#4647AE' }} name="ROAS" />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -52,7 +52,7 @@ export function SalesByChannelChart({ data }) {
         <XAxis dataKey="channel" tick={{ fontSize: 11 }} stroke="#94a3b8" />
         <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
         <Tooltip contentStyle={{ borderRadius: '12px' }} />
-        <Bar dataKey="sales" fill="#6366F1" radius={[6, 6, 0, 0]} name="Sales" />
+        <Bar dataKey="sales" fill="#112E81" radius={[6, 6, 0, 0]} name="Sales" />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -67,7 +67,7 @@ export function CampaignPerformanceChart({ data }) {
         <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="#94a3b8" width={100} />
         <Tooltip contentStyle={{ borderRadius: '12px' }} />
         <Bar dataKey="revenue" fill="#10B981" radius={[0, 6, 6, 0]} name="Revenue" />
-        <Bar dataKey="spend" fill="#6366F1" radius={[0, 6, 6, 0]} name="Spend" />
+        <Bar dataKey="spend" fill="#4382DF" radius={[0, 6, 6, 0]} name="Spend" />
       </BarChart>
     </ResponsiveContainer>
   );
