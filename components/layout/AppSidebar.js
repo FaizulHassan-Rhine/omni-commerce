@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { dashboardNav, isNavActive } from '@/lib/navigation';
@@ -47,14 +48,15 @@ export default function AppSidebar({ mobileOpen, onMobileClose }) {
   const sidebarContent = (
     <>
       <div className="flex h-16 items-center gap-2 border-b border-gray-200/80 px-4">
-        <Link href="/dashboard" onClick={onMobileClose} className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-gradient">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-text-primary">OmniCommerce AI</p>
-            <p className="text-[10px] text-text-muted">Nova Commerce</p>
-          </div>
+        <Link href="/dashboard" onClick={onMobileClose} className="flex items-center" aria-label="OmniCommerce AI">
+          <Image
+            src="/images/logo.png"
+            alt="OmniCommerce AI"
+            width={40}
+            height={40}
+            className="h-10 w-10 object-contain"
+            priority
+          />
         </Link>
         {mobileOpen && (
           <button onClick={onMobileClose} className="ml-auto cursor-pointer lg:hidden">
