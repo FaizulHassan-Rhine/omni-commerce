@@ -2,31 +2,54 @@
 
 import { getPlatformCreativeSpec } from '@/data/platforms';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Loader2, Check, X } from 'lucide-react';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 
 const statusConfig = {
-  published: { icon: CheckCircle, color: 'text-emerald-500', label: 'Published' },
-  success: { icon: CheckCircle, color: 'text-emerald-500', label: 'Published' },
+  published: { icon: CheckCircle, color: 'text-emerald-600', label: 'Published' },
+  success: { icon: CheckCircle, color: 'text-emerald-600', label: 'Published' },
+  approved: { icon: CheckCircle, color: 'text-emerald-600', label: 'Approved' },
   review: { icon: AlertCircle, color: 'text-amber-500', label: 'Needs Review' },
   pending: { icon: Clock, color: 'text-amber-600', label: 'Awaiting approval' },
   loading: { icon: Loader2, color: 'text-brand-primary animate-spin', label: 'Publishing...' },
+  rejected: { icon: X, color: 'text-red-600', label: 'Rejected' },
   error: { icon: AlertCircle, color: 'text-red-500', label: 'Failed' },
 };
 
-export default function PublishingStatus({ items, className }) {
+export default function PublishingStatus({ items, className, onApprove, onReject }) {
   return (
     <div className={cn('space-y-3', className)}>
       {items.map((item) => {
         const config = statusConfig[item.status] || statusConfig.pending;
         const Icon = config.icon;
+        const awaiting = item.status === 'pending';
         return (
-          <div key={item.platform} className="flex items-center justify-between rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              <Icon className={cn('h-5 w-5', config.color)} />
+          <div key={item.platform} className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+            <div className="flex min-w-0 items-center gap-3">
+              <Icon className={cn('h-5 w-5 shrink-0', config.color)} />
               <span className="font-medium text-gray-900 dark:text-white">{item.platform}</span>
             </div>
-            <span className={cn('text-sm font-medium', config.color)}>{item.message || config.label}</span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className={cn('text-sm font-medium', config.color)}>{item.message || config.label}</span>
+              {awaiting && onApprove && onReject ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onApprove(item)}
+                    className="btn-gradient px-3 py-1.5 text-xs"
+                  >
+                    <Check className="h-3.5 w-3.5" /> Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onReject(item)}
+                    className="btn border border-red-200 bg-white px-3 py-1.5 text-xs text-red-700 hover:bg-red-50"
+                  >
+                    <X className="h-3.5 w-3.5" /> Reject
+                  </button>
+                </>
+              ) : null}
+            </div>
           </div>
         );
       })}

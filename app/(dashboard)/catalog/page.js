@@ -8,29 +8,19 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import ProductTabs from '@/components/product/ProductTabs';
 import ProductDetailDrawer from '@/components/product/ProductDetailDrawer';
+import ApprovalRowActions from '@/components/ui/ApprovalRowActions';
 import { ContentScore } from '@/components/ui/AIRecommendation';
-import { getProduct, products } from '@/data/products';
-import { campaigns } from '@/data/campaigns';
+import { campaigns as seedCampaigns } from '@/data/campaigns';
 import { resolveImage } from '@/lib/images';
 import { formatDate, cn } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 import { LayoutGrid, LayoutList, Search } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
 const STATUS_FILTERS = ['All', 'Approved', 'Pending', 'Rejected', 'Draft'];
-const productsInCampaign = new Set(campaigns.map((c) => c.productId));
+const productsInCampaign = new Set(seedCampaigns.map((c) => c.productId));
 
-function withProductState(product, overrides = {}) {
-  if (!product) return null;
-  return {
-    ...product,
-    published: product.status === 'Approved',
-    ...overrides[product.id],
-  };
-}
-
-function CampaignAction({ productId }) {
-  const inCampaign = productsInCampaign.has(productId);
-
+function CampaignAction({ inCampaign, productId }) {
   if (inCampaign) {
     return (
       <Link href="/campaigns" className="btn-secondary py-1.5 text-xs whitespace-nowrap">
@@ -57,21 +47,26 @@ export default function CatalogPage() {
 function CatalogPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { catalogProducts, workspaceCampaigns, updateProduct, addToast } = useApp();
   const [view, setView] = useState('list');
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [productOverrides, setProductOverrides] = useState({});
+
+  const campaignProductIds = useMemo(
+    () => new Set([...productsInCampaign, ...workspaceCampaigns.map((c) => c.productId)]),
+    [workspaceCampaigns]
+  );
 
   useEffect(() => {
     const productId = searchParams.get('product');
-    setSelectedProduct(productId ? withProductState(getProduct(productId), productOverrides) : null);
-  }, [searchParams, productOverrides]);
+    setSelectedProduct(productId ? catalogProducts.find((p) => p.id === productId) || null : null);
+  }, [searchParams, catalogProducts]);
 
   const openProduct = useCallback((product) => {
-    setSelectedProduct(withProductState(product, productOverrides));
+    setSelectedProduct(product);
     router.replace(`/catalog?product=${product.id}`, { scroll: false });
-  }, [router, productOverrides]);
+  }, [router]);
 
   const closeProduct = useCallback(() => {
     setSelectedProduct(null);
@@ -81,19 +76,21 @@ function CatalogPageContent() {
   const updateSelectedProduct = useCallback((patch) => {
     setSelectedProduct((current) => {
       if (!current) return current;
+      updateProduct(current.id, patch);
       return { ...current, ...patch };
     });
-    setProductOverrides((prev) => {
-      const id = searchParams.get('product');
-      if (!id) return prev;
-      return { ...prev, [id]: { ...prev[id], ...patch } };
-    });
-  }, [searchParams]);
+  }, [updateProduct]);
 
-  const catalogProducts = useMemo(
-    () => products.map((p) => withProductState(p, productOverrides)),
-    [productOverrides]
-  );
+  const decideProduct = (event, product, action) => {
+    event.stopPropagation();
+    if (action === 'Approved') {
+      updateProduct(product.id, { status: 'Approved', published: product.published === true });
+      addToast('success', `${product.name} approved.`);
+      return;
+    }
+    updateProduct(product.id, { status: 'Approved', published: true });
+    addToast('success', `${product.name} published.`);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -112,7 +109,7 @@ function CatalogPageContent() {
     <div className="page-container pb-20">
       <PageHeader
         title="Products"
-        subtitle={`${products.length} products created on this platform.`}
+        subtitle={`${catalogProducts.length} products created on this platform.`}
       />
       <ProductTabs />
 
@@ -199,7 +196,13 @@ function CatalogPageContent() {
                   <td className="px-4 py-3"><ContentScore score={p.contentScore} /></td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                    <CampaignAction productId={p.id} />
+                    <ApprovalRowActions
+                      needsAction={p.status !== 'Approved' && p.status !== 'Rejected'}
+                      onApprove={(event) => decideProduct(event, p, 'Approved')}
+                      onPublish={(event) => decideProduct(event, p, 'Published')}
+                    >
+                      <CampaignAction inCampaign={campaignProductIds.has(p.id)} productId={p.id} />
+                    </ApprovalRowActions>
                   </td>
                 </tr>
               ))}
@@ -224,7 +227,13 @@ function CatalogPageContent() {
                   <ContentScore score={p.contentScore} />
                 </div>
                 <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
-                  <CampaignAction productId={p.id} />
+                  <ApprovalRowActions
+                    needsAction={p.status !== 'Approved' && p.status !== 'Rejected'}
+                    onApprove={(event) => decideProduct(event, p, 'Approved')}
+                    onPublish={(event) => decideProduct(event, p, 'Published')}
+                  >
+                    <CampaignAction inCampaign={campaignProductIds.has(p.id)} productId={p.id} />
+                  </ApprovalRowActions>
                 </div>
               </div>
             </div>

@@ -179,7 +179,7 @@ export default function LandingPage() {
               { title: 'AI Content', desc: 'Generate product content and visuals from images.', href: '/create/content' },
               { title: 'AI Campaign', desc: 'Build full ad campaigns with A/B variants.', href: '/create/campaign' },
               { title: 'AI Analyst', desc: 'Ask questions about performance.', href: '/analytics/ai-analyst' },
-              { title: 'Catalog Guardian', desc: 'Fix catalog quality issues with AI.', href: '/catalog/guardian' },
+              { title: 'AI Guardian', desc: 'Fix catalog and campaign issues with AI.', href: '/guardian' },
             ].map((tool) => (
               <Link key={tool.title} href={tool.href} className="card-hover p-6">
                 <h3 className="text-lg font-semibold text-text-primary">{tool.title}</h3>

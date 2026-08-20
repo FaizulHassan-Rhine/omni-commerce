@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import StatusBadge from '@/components/ui/StatusBadge';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import AIRecommendation from '@/components/ui/AIRecommendation';
@@ -11,7 +12,7 @@ import { brandKit } from '@/data/brand';
 import { resolveImage } from '@/lib/images';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
-import { BarChart3, Check, Clock, Globe, Search, Tag, X } from 'lucide-react';
+import { BarChart3, Check, Clock, Globe, Megaphone, Search, Tag, X } from 'lucide-react';
 
 function healthColor(score) {
   if (score >= 90) return 'text-emerald-600 bg-emerald-50';
@@ -257,7 +258,7 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-gray-200/80 bg-white px-5 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-200/80 bg-white px-5 py-3">
           {product.status === 'Rejected' ? (
             <FooterState label="Rejected" icon={X} tone="rejected" />
           ) : (
@@ -278,6 +279,12 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
               )}
             </>
           )}
+          <Link
+            href={`/campaigns/create?product=${product.id}`}
+            className="btn-secondary flex-1 text-sm"
+          >
+            <Megaphone className="h-4 w-4" /> Start campaign
+          </Link>
         </div>
       </aside>
     </div>

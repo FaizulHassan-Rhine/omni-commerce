@@ -10,8 +10,7 @@ import Tabs, { TabPanel } from '@/components/ui/Tabs';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import AIRecommendation from '@/components/ui/AIRecommendation';
 import { ChartCard, RevenueSpendChart } from '@/components/charts/DashboardCharts';
-import { getCampaign } from '@/data/campaigns';
-import { getProduct } from '@/data/products';
+import { useApp } from '@/context/AppContext';
 import { revenueVsSpend } from '@/data/analytics';
 import { formatCurrency } from '@/lib/utils';
 import { resolveImage } from '@/lib/images';
@@ -30,7 +29,8 @@ const tabs = [
 
 export default function CampaignDetailPage() {
   const params = useParams();
-  const campaign = getCampaign(params.id);
+  const { workspaceCampaigns, catalogProducts } = useApp();
+  const campaign = workspaceCampaigns.find((item) => item.id === params.id);
   const [activeTab, setActiveTab] = useState('overview');
 
   if (!campaign) {
@@ -42,7 +42,7 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const product = getProduct(campaign.productId);
+  const product = catalogProducts.find((item) => item.id === campaign.productId);
 
   return (
     <div className="page-container pb-20">
@@ -82,8 +82,8 @@ export default function CampaignDetailPage() {
               <h3 className="font-semibold mb-4">Campaign Details</h3>
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between"><dt className="text-gray-500">Product</dt><dd>{product?.name}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">Daily Budget</dt><dd>{formatCurrency(campaign.budget.daily)}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">Total Budget</dt><dd>{campaign.budget.total ? formatCurrency(campaign.budget.total) : 'Ongoing'}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Daily Budget</dt><dd>{formatCurrency(campaign.budget?.daily || 0)}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Total Budget</dt><dd>{campaign.budget?.total ? formatCurrency(campaign.budget.total) : 'Ongoing'}</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">End Date</dt><dd>{campaign.endDate || 'Ongoing'}</dd></div>
               </dl>
             </div>

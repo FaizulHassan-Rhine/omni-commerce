@@ -142,8 +142,8 @@ function ProductOverview() {
         <div className="card overflow-x-auto">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Catalog issues</h3>
-            <Link href="/catalog/guardian" className="flex items-center gap-1 text-sm text-brand-primary">
-              Catalog Guardian <ArrowRight className="h-4 w-4" />
+            <Link href="/guardian" className="flex items-center gap-1 text-sm text-brand-primary">
+              AI Guardian <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <table className="w-full text-sm">
