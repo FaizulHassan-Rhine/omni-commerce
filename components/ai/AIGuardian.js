@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { resolveImage } from '@/lib/images';
 import { getGuardianCounts, getGuardianIssues } from '@/lib/ai-guardian';
@@ -77,7 +77,7 @@ export function AIGuardianPanel() {
   };
 
   return (
-    <div className="page-container pb-20">
+    <div className="page-container animate-fade-in pb-20">
       <PageHeader
         title="AI Guardian"
         subtitle="Existing products and campaigns that need improvement before you launch or scale."
@@ -197,13 +197,41 @@ function SummaryCard({ label, value, icon: Icon, tone }) {
 
 export default function AIGuardian() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [expanding, setExpanding] = useState(false);
+
+  useEffect(() => {
+    setExpanding(false);
+  }, [pathname]);
+
   if (pathname === '/guardian' || pathname.startsWith('/guardian/')) return null;
 
+  const openGuardian = () => {
+    if (expanding) return;
+    setExpanding(true);
+    window.setTimeout(() => {
+      router.push('/guardian');
+    }, 1050);
+  };
+
   return (
-    <Link href="/guardian" className="siri-orb" aria-label="Open AI Guardian">
-      <span className="siri-orb-core">
-        <Sparkles className="relative h-6 w-6 text-white drop-shadow" />
-      </span>
-    </Link>
+    <>
+      {!expanding && (
+        <button type="button" onClick={openGuardian} className="siri-orb cursor-pointer" aria-label="Open AI Guardian">
+          <span className="siri-orb-core">
+            <Sparkles className="relative h-6 w-6 text-white drop-shadow" />
+          </span>
+        </button>
+      )}
+      {expanding && (
+        <div className="pointer-events-none fixed inset-0 top-16 z-40 overflow-hidden lg:left-56">
+          <div className="siri-page-glow">
+            <span className="blob blob-a" />
+            <span className="blob blob-b" />
+            <span className="blob blob-c" />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
