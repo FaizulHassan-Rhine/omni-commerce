@@ -8,8 +8,12 @@ import UploadDropzone, { PromptInput } from '@/components/ui/UploadDropzone';
 import CreativeOptions, { defaultCreativeOptions } from '@/components/ui/CreativeOptions';
 import AIProcessingLoader from '@/components/ui/AIProcessingLoader';
 import Modal from '@/components/ui/Modal';
+import StudioImageEditor from '@/components/studio/StudioImageEditor';
+import StudioVideoEditor from '@/components/studio/StudioVideoEditor';
+import { cropAspectClass, mediaPreviewStyle, overlayClass, overlaySizeClass, withEditDefaults } from '@/lib/studio-edit';
 import { AI_STUDIO_STAGES, generateStudioMedia, simulateAIProcessing } from '@/lib/mock-ai';
 import { resolveImage } from '@/lib/images';
+import { cn } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
 import { ArrowLeft, Play, RefreshCw, Save, Sparkles } from 'lucide-react';
 
@@ -42,6 +46,7 @@ export default function CreateStudioContent() {
   const [generating, setGenerating] = useState(false);
   const [aiStage, setAiStage] = useState(0);
   const [results, setResults] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [seed, setSeed] = useState(0);
   const [showComposer, setShowComposer] = useState(true);
   const [regenOpen, setRegenOpen] = useState(false);
@@ -68,7 +73,8 @@ export default function CreateStudioContent() {
     setAiStage(0);
     await simulateAIProcessing(AI_STUDIO_STAGES, (stage) => setAiStage(stage), 550);
     const nextSeed = seed + 1;
-    setResults(generateStudioMedia({ prompt, sourceImage, options, seed: nextSeed }));
+    setResults(generateStudioMedia({ prompt, sourceImage, options, seed: nextSeed }).map(withEditDefaults));
+    setSelectedIndex(0);
     setSeed(nextSeed);
     setGenerating(false);
     setShowComposer(false);
@@ -83,6 +89,21 @@ export default function CreateStudioContent() {
       ? 'video'
       : results[0]?.type || type;
     router.push(`/create/content?tab=${tab}`);
+  };
+
+  const selected = results[selectedIndex] || null;
+
+  const applyPatch = (patch) => {
+    setResults((prev) => prev.map((item, index) => (index === selectedIndex ? { ...item, ...patch } : item)));
+  };
+
+  const resetSelected = () => {
+    if (!selected) return;
+    setResults((prev) => prev.map((item, index) => (
+      index === selectedIndex
+        ? withEditDefaults({ type: item.type, src: item.src, name: item.name })
+        : item
+    )));
   };
 
   return (
@@ -131,10 +152,17 @@ export default function CreateStudioContent() {
               </>
             )}
 
-            {results.length > 0 && (
+            {results.length > 0 && selected && (
               <div className="card space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <h3 className="font-semibold text-text-primary">Generated content</h3>
+                  <div>
+                    <h3 className="font-semibold text-text-primary">Generated content</h3>
+                    <p className="text-sm text-text-secondary">
+                      {selected.type === 'video'
+                        ? 'Trim, crop frames, and add subtitles, then save to the studio.'
+                        : 'Crop, color, filters, and overlay — then save to the studio.'}
+                    </p>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {!showComposer && (
                       <button type="button" onClick={() => setRegenOpen(true)} className="btn-secondary text-sm">
@@ -146,22 +174,61 @@ export default function CreateStudioContent() {
                     </button>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {results.map((item, index) => (
-                    <div key={`${item.type}-${index}`} className="overflow-hidden rounded-xl border border-gray-200">
-                      <div className="relative aspect-square bg-gray-100">
+
+                {results.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {results.map((item, index) => (
+                      <button
+                        key={`${item.type}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedIndex(index)}
+                        className={cn(
+                          'relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2',
+                          index === selectedIndex ? 'border-brand-primary' : 'border-transparent opacity-70 hover:opacity-100'
+                        )}
+                      >
                         <img src={resolveImage(item.src)} alt="" className="h-full w-full object-cover" />
                         {item.type === 'video' && (
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90">
-                              <Play className="h-4 w-4 fill-current" />
-                            </span>
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                            <Play className="h-3.5 w-3.5 fill-white text-white" />
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selected.type === 'video' ? (
+                  <StudioVideoEditor draft={selected} onChange={applyPatch} />
+                ) : (
+                  <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+                    <div className="flex items-center justify-center rounded-2xl bg-gray-100 p-4">
+                      <div className={cn('relative w-full max-w-xl overflow-hidden rounded-xl bg-black', cropAspectClass(selected.cropPreset))}>
+                        <img
+                          src={resolveImage(selected.src)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          style={mediaPreviewStyle(selected)}
+                        />
+                        {selected.vignette > 0 && (
+                          <div
+                            className="pointer-events-none absolute inset-0"
+                            style={{ boxShadow: `inset 0 0 ${80 + selected.vignette}px rgba(0,0,0,${selected.vignette / 120})` }}
+                          />
+                        )}
+                        {selected.overlayTitle && (
+                          <div
+                            className={cn('absolute max-w-[82%] font-semibold leading-tight drop-shadow-md', overlayClass(selected.overlayPosition), overlaySizeClass(selected.overlaySize))}
+                            style={{ color: selected.overlayColor || '#FFFFFF' }}
+                          >
+                            {selected.overlayTitle}
                           </div>
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <StudioImageEditor draft={selected} onChange={applyPatch} onReset={resetSelected} />
+                  </div>
+                )}
               </div>
             )}
           </div>
