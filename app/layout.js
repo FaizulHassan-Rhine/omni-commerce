@@ -1,10 +1,14 @@
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AppProvider } from '@/context/AppContext';
 import { AuthProvider } from '@/context/AuthContext';
 
-const inter = Inter({ subsets: ['latin'] });
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta',
+});
 
 export const metadata = {
   title: 'OmniCommerce AI — From Product to Campaign',
@@ -26,11 +30,11 @@ const themeScript = `
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={plusJakarta.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`${inter.className} bg-bg-light text-text-primary`}>
+      <body className={`${plusJakarta.className} bg-bg-light text-text-primary`}>
         <ThemeProvider>
           <AuthProvider>
             <AppProvider>

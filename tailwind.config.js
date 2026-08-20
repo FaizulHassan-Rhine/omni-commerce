@@ -9,6 +9,9 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-plus-jakarta)', 'system-ui', 'sans-serif'],
+      },
       colors: {
         brand: {
           primary: '#112E81',
@@ -50,6 +53,9 @@ module.exports = {
         'slide-up': 'slideUp 0.4s ease-out',
         'slide-in-right': 'slideInRight 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
         'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+        'float': 'floatY 3.2s ease-in-out infinite',
+        'float-slow': 'floatY 4s ease-in-out infinite',
+        'float-delayed': 'floatY 3.6s ease-in-out infinite 0.6s',
         'guardian-glow': 'guardianGlow 2.4s ease-in-out infinite',
         'guardian-ring': 'guardianRing 2.4s ease-out infinite',
         'guardian-burst': 'guardianBurst 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards',
@@ -66,6 +72,10 @@ module.exports = {
         slideInRight: {
           '0%': { transform: 'translateX(100%)' },
           '100%': { transform: 'translateX(0)' },
+        },
+        floatY: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
         },
         pulseSoft: {
           '0%, 100%': { opacity: '1' },
