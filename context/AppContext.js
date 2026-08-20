@@ -3,58 +3,118 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { connections as initialConnections } from '@/data/connections';
 import { notifications as initialNotifications } from '@/data/notifications';
-import { approvals as initialApprovals } from '@/data/approvals';
 import { getInitialStudioLibrary } from '@/data/studio-library';
+import { products as seedProducts } from '@/data/products';
+import { campaigns as seedCampaigns } from '@/data/campaigns';
 
 const AppContext = createContext(null);
-const APPROVALS_KEY = 'omni-approvals';
 const STUDIO_KEY = 'omni-studio-library';
+const PRODUCTS_KEY = 'omni-catalog-products';
+const CAMPAIGNS_KEY = 'omni-workspace-campaigns';
+const MAX_STORED_STUDIO = 16;
+const MAX_STORED_PRODUCTS = 40;
+const MAX_STORED_CAMPAIGNS = 24;
+const FALLBACK_ASSET = '/images/ad-square.jpg';
 
-function readStoredApprovals() {
+function isHeavyUrl(value) {
+  return typeof value === 'string' && (value.startsWith('data:') || value.startsWith('blob:') || value.length > 2048);
+}
+
+function slimAsset(value) {
+  return isHeavyUrl(value) ? FALLBACK_ASSET : value;
+}
+
+function withPublished(items = []) {
+  return items.map((item) => ({
+    ...item,
+    published: item.published === true,
+    image: slimAsset(item.image),
+  }));
+}
+
+function slimProducts(items = []) {
+  return withPublished(items).slice(0, MAX_STORED_PRODUCTS);
+}
+
+function slimCampaigns(items = []) {
+  return items.slice(0, MAX_STORED_CAMPAIGNS).map((item) => ({
+    ...item,
+    published: item.published ?? (item.status === 'Active' || item.status === 'Completed'),
+  }));
+}
+
+function slimStudioAssets(items = []) {
+  return items.slice(0, MAX_STORED_STUDIO).map((item) => ({
+    ...item,
+    src: slimAsset(item.src),
+  }));
+}
+
+function readJson(key) {
   try {
-    const raw = localStorage.getItem(APPROVALS_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-function readStoredStudioLibrary() {
+function writeJson(key, value) {
+  const payload = JSON.stringify(value);
   try {
-    const raw = localStorage.getItem(STUDIO_KEY);
-    return raw ? JSON.parse(raw) : null;
+    localStorage.setItem(key, payload);
+    return true;
   } catch {
-    return null;
+    try {
+      localStorage.removeItem(key);
+      localStorage.setItem(key, payload);
+      return true;
+    } catch {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+      return false;
+    }
   }
 }
 
 const AppProvider = function AppProvider({ children }) {
   const [connections, setConnections] = useState(initialConnections);
   const [notifications, setNotifications] = useState(initialNotifications);
-  const [approvals, setApprovals] = useState(initialApprovals);
-  const [approvalsReady, setApprovalsReady] = useState(false);
   const [studioAssets, setStudioAssets] = useState(getInitialStudioLibrary());
   const [studioReady, setStudioReady] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState(() => slimProducts(seedProducts));
+  const [workspaceCampaigns, setWorkspaceCampaigns] = useState(() => slimCampaigns(seedCampaigns));
+  const [catalogReady, setCatalogReady] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
-    const stored = readStoredApprovals();
-    if (stored?.length) setApprovals(stored);
-    const storedStudio = readStoredStudioLibrary();
-    if (storedStudio?.length) setStudioAssets(storedStudio);
-    setApprovalsReady(true);
+    const storedStudio = readJson(STUDIO_KEY);
+    if (storedStudio?.length) setStudioAssets(slimStudioAssets(storedStudio));
+    const storedProducts = readJson(PRODUCTS_KEY);
+    if (storedProducts?.length) setCatalogProducts(slimProducts(storedProducts));
+    const storedCampaigns = readJson(CAMPAIGNS_KEY);
+    if (storedCampaigns?.length) setWorkspaceCampaigns(slimCampaigns(storedCampaigns));
     setStudioReady(true);
+    setCatalogReady(true);
   }, []);
 
   useEffect(() => {
-    if (!approvalsReady) return;
-    localStorage.setItem(APPROVALS_KEY, JSON.stringify(approvals));
-  }, [approvals, approvalsReady]);
+    if (!studioReady) return;
+    writeJson(STUDIO_KEY, slimStudioAssets(studioAssets));
+  }, [studioAssets, studioReady]);
 
   useEffect(() => {
-    if (!studioReady) return;
-    localStorage.setItem(STUDIO_KEY, JSON.stringify(studioAssets));
-  }, [studioAssets, studioReady]);
+    if (!catalogReady) return;
+    writeJson(PRODUCTS_KEY, slimProducts(catalogProducts));
+  }, [catalogProducts, catalogReady]);
+
+  useEffect(() => {
+    if (!catalogReady) return;
+    writeJson(CAMPAIGNS_KEY, slimCampaigns(workspaceCampaigns));
+  }, [workspaceCampaigns, catalogReady]);
 
   const addToast = useCallback((type, message) => {
     const id = Date.now().toString();
@@ -100,27 +160,43 @@ const AppProvider = function AppProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const submitApprovals = useCallback((items, creator = 'Alex Morgan') => {
-    const created = items.map((item, index) => ({
-      id: `appr-${Date.now()}-${index}`,
-      type: item.type || 'content',
-      asset: item.asset,
-      assetName: item.assetName,
-      campaign: item.campaign,
-      platform: item.platform || null,
-      creator,
-      reviewer: 'Pending reviewer',
-      status: 'Awaiting Review',
-      createdDate: new Date().toISOString(),
-      comments: [],
-      sourceId: item.sourceId || null,
-    }));
-    setApprovals((prev) => [...created, ...prev]);
-    return created;
+  const upsertProduct = useCallback((product) => {
+    const next = {
+      ...product,
+      id: product.id || `prod-${Date.now()}`,
+      published: product.published === true,
+      image: slimAsset(product.image) || FALLBACK_ASSET,
+    };
+    setCatalogProducts((prev) => {
+      const exists = prev.some((item) => item.id === next.id);
+      return exists
+        ? prev.map((item) => (item.id === next.id ? { ...item, ...next } : item))
+        : [next, ...prev].slice(0, MAX_STORED_PRODUCTS);
+    });
+    return next;
   }, []);
 
-  const updateApproval = useCallback((id, patch) => {
-    setApprovals((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  const updateProduct = useCallback((id, patch) => {
+    setCatalogProducts((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }, []);
+
+  const upsertCampaign = useCallback((campaign) => {
+    const next = {
+      ...campaign,
+      id: campaign.id || `camp-${Date.now()}`,
+      published: campaign.published === true,
+    };
+    setWorkspaceCampaigns((prev) => {
+      const exists = prev.some((item) => item.id === next.id);
+      return exists
+        ? prev.map((item) => (item.id === next.id ? { ...item, ...next } : item))
+        : [next, ...prev].slice(0, MAX_STORED_CAMPAIGNS);
+    });
+    return next;
+  }, []);
+
+  const updateCampaign = useCallback((id, patch) => {
+    setWorkspaceCampaigns((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }, []);
 
   const addStudioAssets = useCallback((items) => {
@@ -138,7 +214,7 @@ const AppProvider = function AppProvider({ children }) {
       imageBrightness: item.imageBrightness ?? 100,
       imageContrast: item.imageContrast ?? 100,
     }));
-    setStudioAssets((prev) => [...created, ...prev]);
+    setStudioAssets((prev) => [...created, ...prev].slice(0, MAX_STORED_STUDIO));
     return created;
   }, []);
 
@@ -151,16 +227,19 @@ const AppProvider = function AppProvider({ children }) {
       value={{
         connections,
         notifications,
-        approvals,
         toasts,
+        catalogProducts,
+        workspaceCampaigns,
+        upsertProduct,
+        updateProduct,
+        upsertCampaign,
+        updateCampaign,
         connectPlatform,
         disconnectPlatform,
         markNotificationRead,
         markAllNotificationsRead,
         addToast,
         removeToast,
-        submitApprovals,
-        updateApproval,
         studioAssets,
         addStudioAssets,
         updateStudioAsset,

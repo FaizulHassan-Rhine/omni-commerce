@@ -426,29 +426,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="ai-tools" className="relative bg-white py-24">
-        <div className="page-container relative">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-secondary">
-              Workflows
-            </p>
-            <h2 className="mt-3 text-3xl font-extrabold uppercase tracking-tight text-slate-900 sm:text-4xl">
-              AI Tools
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-500">
-              Powerful AI workflows built for commerce teams — create, analyze, and optimize in one place.
-            </p>
-          </div>
-
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {aiTools.map((tool) => (
-              <Link
-                key={tool.title}
-                href={tool.href}
-                className="group relative flex min-h-[230px] flex-col rounded-[24px] border border-slate-200/80 bg-white p-8 shadow-[0_1px_2px_rgba(17,46,129,0.03)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-brand-primary/20 hover:shadow-[0_18px_40px_rgba(17,46,129,0.10)]"
-              >
-                <span className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-gradient-subtle text-brand-primary transition-all duration-300 group-hover:bg-brand-gradient group-hover:text-white group-hover:shadow-[0_6px_16px_rgba(17,46,129,0.18)]">
-                  <tool.icon className="h-5 w-5" strokeWidth={1.6} />
+      {/* AI Tools */}
+      <section id="ai-tools" className="py-20 border-t border-gray-200/80 bg-white">
+        <div className="page-container">
+          <h2 className="text-center text-3xl font-bold text-text-primary">AI Tools</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-text-secondary">
+            Powerful AI workflows built for commerce teams.
+          </p>
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { title: 'AI Content', desc: 'Generate product content and visuals from images.', href: '/create/content' },
+              { title: 'AI Campaign', desc: 'Build full ad campaigns with A/B variants.', href: '/create/campaign' },
+              { title: 'AI Analyst', desc: 'Ask questions about performance.', href: '/analytics/ai-analyst' },
+              { title: 'AI Guardian', desc: 'Fix catalog and campaign issues with AI.', href: '/guardian' },
+            ].map((tool) => (
+              <Link key={tool.title} href={tool.href} className="card-hover p-6">
+                <h3 className="text-lg font-semibold text-text-primary">{tool.title}</h3>
+                <p className="mt-2 text-sm text-text-secondary">{tool.desc}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-sm text-brand-primary">
+                  Open tool <ArrowRight className="h-4 w-4" />
                 </span>
                 <h3 className="text-lg font-semibold tracking-tight text-slate-900 transition-colors duration-300 group-hover:text-brand-primary">
                   {tool.title}

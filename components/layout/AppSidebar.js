@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { dashboardNav, isNavActive } from '@/lib/navigation';
 import {
   LayoutDashboard, Sparkles, Package, Megaphone, BarChart3,
-  Plug, Settings, Clapperboard, X,
+  Plug, Settings, Clapperboard, Shield, X,
 } from 'lucide-react';
 
 const iconMap = {
@@ -19,6 +19,7 @@ const iconMap = {
   Plug,
   Settings,
   Clapperboard,
+  Shield,
 };
 
 function NavItem({ item, pathname, collapsed, onNavigate }) {
@@ -31,9 +32,11 @@ function NavItem({ item, pathname, collapsed, onNavigate }) {
       onClick={onNavigate}
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-        isActive
-          ? 'bg-brand-gradient-subtle text-brand-primary font-medium'
-          : 'text-text-secondary hover:bg-gray-50'
+        item.glow
+          ? 'nav-guardian-glow text-brand-secondary'
+          : isActive
+            ? 'bg-brand-gradient-subtle text-brand-primary font-medium'
+            : 'text-text-secondary hover:bg-gray-50'
       )}
     >
       <Icon className="h-5 w-5 shrink-0" />

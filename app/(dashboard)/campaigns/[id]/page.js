@@ -10,11 +10,12 @@ import Tabs, { TabPanel } from '@/components/ui/Tabs';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import AIRecommendation from '@/components/ui/AIRecommendation';
 import { ChartCard, RevenueSpendChart } from '@/components/charts/DashboardCharts';
-import { getCampaign } from '@/data/campaigns';
-import { getProduct } from '@/data/products';
+import { useApp } from '@/context/AppContext';
 import { revenueVsSpend } from '@/data/analytics';
 import { formatCurrency } from '@/lib/utils';
 import { resolveImage } from '@/lib/images';
+import { canApproveItem, canPublishItem, isItemPublished } from '@/lib/journey';
+import { ApproveAction, PublishAction } from '@/components/ui/ApprovalRowActions';
 import { DollarSign, TrendingUp, Target, MousePointer, Eye, ShoppingCart, MoreHorizontal, Pause, Copy } from 'lucide-react';
 
 const tabs = [
@@ -30,7 +31,8 @@ const tabs = [
 
 export default function CampaignDetailPage() {
   const params = useParams();
-  const campaign = getCampaign(params.id);
+  const { workspaceCampaigns, catalogProducts, updateCampaign, addToast } = useApp();
+  const campaign = workspaceCampaigns.find((item) => item.id === params.id);
   const [activeTab, setActiveTab] = useState('overview');
 
   if (!campaign) {
@@ -42,7 +44,18 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const product = getProduct(campaign.productId);
+  const product = catalogProducts.find((item) => item.id === campaign.productId);
+  const published = isItemPublished(campaign);
+
+  const handleApprove = () => {
+    updateCampaign(campaign.id, { status: 'Approved', published: false });
+    addToast('success', `${campaign.name} approved. Publish it when you are ready to go live.`);
+  };
+
+  const handlePublish = () => {
+    updateCampaign(campaign.id, { status: 'Active', published: true });
+    addToast('success', `${campaign.name} published.`);
+  };
 
   return (
     <div className="page-container pb-20">
@@ -54,11 +67,17 @@ export default function CampaignDetailPage() {
           </div>
           <p className="mt-1 text-gray-500">{campaign.objective} · Started {campaign.startDate}</p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary"><Pause className="h-4 w-4" /> Pause</button>
-          <button className="btn-secondary"><Copy className="h-4 w-4" /> Duplicate</button>
-          <button className="btn-ghost"><MoreHorizontal className="h-4 w-4" /></button>
-        </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ApproveAction enabled={canApproveItem(campaign.status)} onApprove={handleApprove} />
+            <PublishAction
+              enabled={canPublishItem(campaign)}
+              published={published}
+              onPublish={handlePublish}
+            />
+            {published ? <button className="btn-secondary"><Pause className="h-4 w-4" /> Pause</button> : null}
+            <button className="btn-secondary"><Copy className="h-4 w-4" /> Duplicate</button>
+            <button className="btn-ghost"><MoreHorizontal className="h-4 w-4" /></button>
+          </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 mb-8">
@@ -82,8 +101,8 @@ export default function CampaignDetailPage() {
               <h3 className="font-semibold mb-4">Campaign Details</h3>
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between"><dt className="text-gray-500">Product</dt><dd>{product?.name}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">Daily Budget</dt><dd>{formatCurrency(campaign.budget.daily)}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">Total Budget</dt><dd>{campaign.budget.total ? formatCurrency(campaign.budget.total) : 'Ongoing'}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Daily Budget</dt><dd>{formatCurrency(campaign.budget?.daily || 0)}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Total Budget</dt><dd>{campaign.budget?.total ? formatCurrency(campaign.budget.total) : 'Ongoing'}</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">End Date</dt><dd>{campaign.endDate || 'Ongoing'}</dd></div>
               </dl>
             </div>

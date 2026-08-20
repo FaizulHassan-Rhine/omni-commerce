@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import StatusBadge from '@/components/ui/StatusBadge';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import AIRecommendation from '@/components/ui/AIRecommendation';
@@ -11,7 +12,8 @@ import { brandKit } from '@/data/brand';
 import { resolveImage } from '@/lib/images';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
-import { BarChart3, Check, Clock, Globe, Search, Tag, X } from 'lucide-react';
+import { canApproveItem, canPublishItem, canStartProductCampaign, isItemPublished } from '@/lib/journey';
+import { BarChart3, Check, Clock, Globe, Megaphone, Search, Tag, X } from 'lucide-react';
 
 function healthColor(score) {
   if (score >= 90) return 'text-emerald-600 bg-emerald-50';
@@ -86,15 +88,20 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
 
   if (!product) return null;
 
-  const published = product.published === true;
-  const canAct = product.status !== 'Approved' && product.status !== 'Rejected';
+  const published = isItemPublished(product);
+  const canApprove = canApproveItem(product.status);
+  const canPublish = canPublishItem(product);
 
   const handleApprove = () => {
-    onUpdate?.({ status: 'Approved', published: product.published === true });
-    addToast('success', `${product.name} approved.`);
+    onUpdate?.({ status: 'Approved', published: false });
+    addToast('success', `${product.name} approved. Publish it when you are ready.`);
   };
 
   const handlePublish = () => {
+    if (!canPublish) {
+      addToast('error', 'Approve this product before publishing.');
+      return;
+    }
     onUpdate?.({ status: 'Approved', published: true });
     addToast('success', `${product.name} published.`);
   };
@@ -257,12 +264,12 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-gray-200/80 bg-white px-5 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-200/80 bg-white px-5 py-3">
           {product.status === 'Rejected' ? (
             <FooterState label="Rejected" icon={X} tone="rejected" />
           ) : (
             <>
-              {canAct ? (
+              {canApprove ? (
                 <button type="button" onClick={handleApprove} className="btn-gradient flex-1 text-sm">
                   <Check className="h-4 w-4" /> Approve
                 </button>
@@ -272,11 +279,29 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
               {published ? (
                 <FooterState label="Published" icon={Globe} tone="published" />
               ) : (
-                <button type="button" onClick={handlePublish} className="btn-gradient flex-1 text-sm">
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  disabled={!canPublish}
+                  title={canPublish ? 'Publish to channels' : 'Approve first'}
+                  className="btn-publish flex-1 text-sm"
+                >
                   <Globe className="h-4 w-4" /> Publish
                 </button>
               )}
             </>
+          )}
+          {canStartProductCampaign(product) ? (
+            <Link
+              href={`/campaigns/create?product=${product.id}`}
+              className="btn-secondary flex-1 text-sm"
+            >
+              <Megaphone className="h-4 w-4" /> Start campaign
+            </Link>
+          ) : (
+            <span className="btn-secondary flex-1 cursor-not-allowed text-sm opacity-50" title="Approve first">
+              <Megaphone className="h-4 w-4" /> Start campaign
+            </span>
           )}
         </div>
       </aside>

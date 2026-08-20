@@ -13,13 +13,12 @@ import AIRecommendation, { AIConfidenceBadge } from '@/components/ui/AIRecommend
 import Tabs, { TabPanel } from '@/components/ui/Tabs';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CreativeOptions, { defaultCreativeOptions, formatContentTypes } from '@/components/ui/CreativeOptions';
-import { products, getProduct } from '@/data/products';
 import { resolveImage } from '@/lib/images';
 import { cn } from '@/lib/utils';
+import { isItemApproved } from '@/lib/journey';
 import { generateCampaignAds } from '@/lib/campaign-review';
 import { AI_CAMPAIGN_STAGES, generateCampaignContent, generatePlatformAudienceSuggestions, generatePlatformBudgetPlan, simulateAIProcessing } from '@/lib/mock-ai';
 import { useApp } from '@/context/AppContext';
-import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, ArrowLeft, Sparkles, Wand2, Search } from 'lucide-react';
 import Link from 'next/link';
 
@@ -45,9 +44,9 @@ const adPlatforms = [
 
 export default function CreateCampaignWizard() {
   const searchParams = useSearchParams();
-  const presetProduct = getProduct(searchParams.get('product'));
-  const { addToast, submitApprovals } = useApp();
-  const { user } = useAuth();
+  const { addToast, upsertCampaign, catalogProducts } = useApp();
+  const campaignReadyProducts = catalogProducts.filter((product) => isItemApproved(product.status));
+  const presetProduct = campaignReadyProducts.find((p) => p.id === searchParams.get('product'));
   const [step, setStep] = useState(presetProduct ? 1 : 0);
   const [prompt, setPrompt] = useState('');
   const [productSearch, setProductSearch] = useState('');
@@ -73,8 +72,8 @@ export default function CreateCampaignWizard() {
 
   const launchStages = [
     'Preparing campaign for review...',
-    'Sending creatives to Approval Center...',
-    'Queued for Admin or Moderator approval.',
+    'Adding campaign to Campaigns page...',
+    'Queued for approval on the Campaigns page.',
   ];
 
   const handleGenerateAudience = () => {
@@ -203,7 +202,7 @@ export default function CreateCampaignWizard() {
     setUploadedFiles([]);
   };
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = campaignReadyProducts.filter((product) => {
     const query = productSearch.trim().toLowerCase();
     if (!query) return true;
     return (
@@ -214,27 +213,35 @@ export default function CreateCampaignWizard() {
   });
 
   const handleLaunch = async () => {
-    const adsToSubmit = campaignAds.length > 0
-      ? campaignAds
-      : [{ id: 'campaign', name: 'Campaign', mediaUrl: campaign?.squareCreative || campaign?.generatedImage }];
-    submitApprovals(
-      adsToSubmit.map((ad) => ({
-        type: 'campaign',
-        asset: ad.mediaUrl || campaign?.squareCreative || campaign?.generatedImage,
-        assetName: `${campaign?.campaignName || 'Campaign'} — ${ad.name}`,
-        campaign: campaign?.campaignName || 'Ad campaign',
-        platform: ad.name,
-        sourceId: ad.id,
-      })),
-      user?.name || 'Alex Morgan'
-    );
+    upsertCampaign({
+      name: campaign?.campaignName || `${selectedProduct?.name || 'Product'} — ${objective} Campaign`,
+      status: 'Needs Review',
+      objective,
+      channels: selectedPlatforms,
+      spend: 0,
+      revenue: 0,
+      roas: 0,
+      conversions: 0,
+      ctr: 0,
+      cpa: 0,
+      impressions: 0,
+      clicks: 0,
+      startDate: budget.startDate || new Date().toISOString().slice(0, 10),
+      endDate: budget.endDate || null,
+      budget: {
+        daily: platformBudgetPlan?.totalDaily || 50,
+        total: platformBudgetPlan?.totalCampaign || null,
+      },
+      productId: selectedProduct?.id || null,
+      published: false,
+    });
     setStep(7);
     for (let i = 0; i < launchStages.length; i++) {
       setLaunchStage(i);
       await new Promise((r) => setTimeout(r, 700));
     }
     setSubmittedForApproval(true);
-    addToast('success', 'Campaign sent for approval. It will publish after Admin or Moderator approval.');
+    addToast('success', 'Campaign added to Campaigns. Approve it first, then publish to go live.');
   };
 
   return (
@@ -296,7 +303,9 @@ export default function CreateCampaignWizard() {
               </div>
               {filteredProducts.length === 0 && (
                 <p className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-text-muted">
-                  No products match your search.
+                  {campaignReadyProducts.length === 0
+                    ? 'Approve a product first, then start a campaign.'
+                    : 'No products match your search.'}
                 </p>
               )}
             </div>
@@ -689,11 +698,11 @@ export default function CreateCampaignWizard() {
               <Sparkles className="h-12 w-12 text-amber-500 mx-auto mb-4" />
               <h3 className="text-xl font-bold">Sent for approval</h3>
               <p className="text-gray-500 mt-2">
-                This campaign will publish after an Admin or Moderator approves it.
+                This campaign is on the Campaigns page and waits for approval before it can go live.
               </p>
               <div className="mt-6 flex justify-center gap-3">
-                <Link href="/approvals" className="btn-gradient">Go to Approval Center</Link>
-                <Link href="/campaigns" className="btn-secondary">View campaigns</Link>
+                <Link href="/campaigns" className="btn-gradient">View Campaigns</Link>
+                <Link href="/campaigns/create" className="btn-secondary">Create another</Link>
               </div>
             </div>
           )}
