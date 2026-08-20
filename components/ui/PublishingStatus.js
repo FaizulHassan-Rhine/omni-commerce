@@ -2,7 +2,7 @@
 
 import { getPlatformCreativeSpec } from '@/data/platforms';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Clock, AlertCircle, Loader2, Check, X } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Loader2, Check, X, Globe } from 'lucide-react';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 
 const statusConfig = {
@@ -16,13 +16,14 @@ const statusConfig = {
   error: { icon: AlertCircle, color: 'text-red-500', label: 'Failed' },
 };
 
-export default function PublishingStatus({ items, className, onApprove, onReject }) {
+export default function PublishingStatus({ items, className, onApprove, onReject, onPublish }) {
   return (
     <div className={cn('space-y-3', className)}>
       {items.map((item) => {
         const config = statusConfig[item.status] || statusConfig.pending;
         const Icon = config.icon;
         const awaiting = item.status === 'pending';
+        const approved = item.status === 'approved';
         return (
           <div key={item.platform} className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
             <div className="flex min-w-0 items-center gap-3">
@@ -48,6 +49,15 @@ export default function PublishingStatus({ items, className, onApprove, onReject
                     <X className="h-3.5 w-3.5" /> Reject
                   </button>
                 </>
+              ) : null}
+              {approved && onPublish ? (
+                <button
+                  type="button"
+                  onClick={() => onPublish(item)}
+                  className="btn-publish px-3 py-1.5 text-xs"
+                >
+                  <Globe className="h-3.5 w-3.5" /> Publish
+                </button>
               ) : null}
             </div>
           </div>

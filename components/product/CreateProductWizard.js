@@ -59,7 +59,7 @@ function isValidProductUrl(value) {
 export default function CreateProductWizard({ mode = 'upload' }) {
   const isLink = mode === 'link';
   const steps = isLink ? linkSteps : uploadSteps;
-  const { addToast, upsertProduct } = useApp();
+  const { addToast, upsertProduct, updateProduct } = useApp();
   const { user } = useAuth();
   const canApprove = canApproveContent(resolveTeamRole(user?.email));
   const [step, setStep] = useState(0);
@@ -78,6 +78,7 @@ export default function CreateProductWizard({ mode = 'upload' }) {
   const [activePostId, setActivePostId] = useState(null);
   const [publishResults, setPublishResults] = useState(null);
   const [publishing, setPublishing] = useState(false);
+  const [savedProductId, setSavedProductId] = useState(null);
 
   const canGenerate = isLink ? Boolean(fetchedProduct) : uploadedFiles.length > 0;
   const analysisStages = isLink ? AI_LINK_STAGES : AI_CONTENT_STAGES;
@@ -153,7 +154,7 @@ export default function CreateProductWizard({ mode = 'upload' }) {
 
   const saveProductForReview = () => {
     if (!content) return null;
-    return upsertProduct({
+    const product = upsertProduct({
       name: content.title || 'New product',
       sku: `SKU-${Date.now().toString().slice(-6)}`,
       category: content.category || 'Fashion Accessories',
@@ -174,6 +175,8 @@ export default function CreateProductWizard({ mode = 'upload' }) {
       seoMetaDescription: content.seoMetaDescription,
       keywords: content.keywords,
     });
+    if (product?.id) setSavedProductId(product.id);
+    return product;
   };
 
   const handleLaunchPost = async (id) => {
@@ -184,7 +187,7 @@ export default function CreateProductWizard({ mode = 'upload' }) {
     saveProductForReview();
     updatePost(id, { status: 'pending' });
     setPublishing(false);
-    addToast('success', `Sent for review. Approve ${post.name} from the Products page.`);
+    addToast('success', `Sent for review. Approve ${post.name} on the Products page, then publish it.`);
   };
 
   const handleLaunchAll = async () => {
@@ -205,7 +208,7 @@ export default function CreateProductWizard({ mode = 'upload' }) {
     await new Promise((r) => setTimeout(r, 600));
     setPublishResults(results);
     setPublishing(false);
-    addToast('success', 'Sent for review. Approve this product on the Products page.');
+    addToast('success', 'Sent for review. Approve this product on the Products page, then publish it.');
   };
 
   const handleApprovalDecision = (item, action) => {
@@ -213,25 +216,49 @@ export default function CreateProductWizard({ mode = 'upload' }) {
       addToast('error', 'Only Admin or Moderator can approve or reject.');
       return;
     }
+    const approved = action === 'Approved';
     setPublishResults((prev) => (prev || []).map((row) => (
       row.platform === item.platform
         ? {
             ...row,
-            status: action === 'Approved' ? 'approved' : 'rejected',
-            message: action,
+            status: approved ? 'approved' : 'rejected',
+            message: approved ? 'Approved' : 'Rejected',
           }
         : row
     )));
     if (item.postId) {
-      updatePost(item.postId, { status: action === 'Approved' ? 'published' : 'draft' });
+      updatePost(item.postId, { status: approved ? 'ready' : 'draft' });
     }
-    addToast('success', `${item.platform} ${action.toLowerCase()}.`);
+    if (approved && savedProductId) {
+      updateProduct(savedProductId, { status: 'Approved', published: false });
+    }
+    addToast('success', approved ? `${item.platform} approved. Publish it when you are ready.` : `${item.platform} rejected.`);
+  };
+
+  const handlePublishChannel = (item) => {
+    if (item.status !== 'approved') {
+      addToast('error', 'Approve this channel before publishing.');
+      return;
+    }
+    setPublishResults((prev) => (prev || []).map((row) => (
+      row.platform === item.platform
+        ? { ...row, status: 'published', message: 'Published' }
+        : row
+    )));
+    if (item.postId) {
+      updatePost(item.postId, { status: 'published' });
+    }
+    if (savedProductId) {
+      updateProduct(savedProductId, { status: 'Approved', published: true });
+    }
+    addToast('success', `${item.platform} published.`);
   };
 
   const resetWizard = () => {
     setStep(0);
     setContent(null);
     setPublishResults(null);
+    setSavedProductId(null);
     setUploadedFiles([]);
     setPlatformPosts([]);
     setSelectedChannels([]);
@@ -527,13 +554,14 @@ export default function CreateProductWizard({ mode = 'upload' }) {
               {publishing ? 'Sending for approval...' : 'Sent for approval'}
             </h3>
             <p className="mb-4 text-sm text-text-secondary">
-              These posts wait for approval on the Products page. Approve or publish them there.
+              These posts wait for approval on the Products page. Approve first, then publish when you are ready.
             </p>
             {publishResults && (
               <PublishingStatus
                 items={publishResults}
                 onApprove={(item) => handleApprovalDecision(item, 'Approved')}
                 onReject={(item) => handleApprovalDecision(item, 'Rejected')}
+                onPublish={handlePublishChannel}
               />
             )}
           </div>

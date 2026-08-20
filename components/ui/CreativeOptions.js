@@ -1,12 +1,19 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Image, Video } from 'lucide-react';
+import { platforms } from '@/data/platforms';
+import PlatformIcon from '@/components/ui/PlatformIcon';
+import { Check, ChevronDown, Image, Video } from 'lucide-react';
 
 export const CREATIVE_BACKGROUNDS = ['White studio', 'Luxury studio', 'Outdoor', 'Urban', 'Nature', 'Minimal', 'Custom prompt'];
 export const CREATIVE_MODELS = ['No model', 'Male model', 'Female model', 'Lifestyle scene'];
 export const CREATIVE_OUTPUT_COUNTS = [1, 2, 4];
 export const DESCRIPTION_SIZES = ['Small', 'Medium', 'Large'];
+export const CREATIVE_PLATFORM_OPTIONS = [
+  ...platforms.social,
+  ...platforms.commerce.slice(0, 3),
+];
 
 export const defaultCreativeOptions = {
   background: 'White studio',
@@ -14,6 +21,7 @@ export const defaultCreativeOptions = {
   outputCount: 2,
   contentTypes: { image: true, video: false },
   descriptionSize: 'Medium',
+  platforms: ['instagram', 'facebook', 'tiktok'],
 };
 
 function OptionChip({ label, selected, onClick }) {
@@ -42,7 +50,7 @@ function OptionGroup({ label, children }) {
   );
 }
 
-function ContentTypeCheckbox({ id, label, icon: Icon, checked, onChange }) {
+function ContentTypeCheckbox({ label, icon: Icon, checked, onChange }) {
   return (
     <label
       className={cn(
@@ -64,6 +72,96 @@ function ContentTypeCheckbox({ id, label, icon: Icon, checked, onChange }) {
   );
 }
 
+function PlatformDropdown({ value = [], onChange }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const selected = CREATIVE_PLATFORM_OPTIONS.filter((p) => value.includes(p.id));
+
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const toggle = (id) => {
+    if (value.includes(id)) {
+      onChange(value.filter((item) => item !== id));
+      return;
+    }
+    onChange([...value, id]);
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          'flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left text-sm',
+          open && 'border-brand-primary ring-2 ring-brand-primary/15'
+        )}
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-2 truncate text-text-primary">
+          {selected.length === 0 ? (
+            'Select platforms'
+          ) : selected.length <= 2 ? (
+            <>
+              <span className="flex items-center -space-x-1">
+                {selected.map((p) => (
+                  <PlatformIcon key={p.id} platformId={p.id} size="sm" className="shadow-none ring-1 ring-white" />
+                ))}
+              </span>
+              <span className="truncate">{selected.map((p) => p.name).join(', ')}</span>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center -space-x-1">
+                {selected.slice(0, 3).map((p) => (
+                  <PlatformIcon key={p.id} platformId={p.id} size="sm" className="shadow-none ring-1 ring-white" />
+                ))}
+              </span>
+              <span className="truncate">{selected.length} platforms selected</span>
+            </>
+          )}
+        </span>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-text-muted transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          {CREATIVE_PLATFORM_OPTIONS.map((platform) => {
+            const active = value.includes(platform.id);
+            return (
+              <li key={platform.id} role="option" aria-selected={active}>
+                <button
+                  type="button"
+                  onClick={() => toggle(platform.id)}
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm',
+                    active ? 'bg-brand-gradient-subtle text-brand-primary' : 'text-text-secondary hover:bg-gray-50'
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <PlatformIcon platformId={platform.id} size="sm" className="shadow-none" />
+                    <span className="truncate">{platform.name}</span>
+                  </span>
+                  {active && <Check className="h-3.5 w-3.5 shrink-0" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function formatContentTypes(contentTypes) {
   const types = [];
   if (contentTypes?.image) types.push('Image');
@@ -76,7 +174,6 @@ export default function CreativeOptions({ value, onChange, className, mediaOnly 
 
   const toggleContentType = (type, checked) => {
     const next = { ...value.contentTypes, [type]: checked };
-    // Require at least one content type
     if (!next.image && !next.video) return;
     update('contentTypes', next);
   };
@@ -94,14 +191,12 @@ export default function CreativeOptions({ value, onChange, className, mediaOnly 
         <label className="label">Content type</label>
         <div className="flex gap-2">
           <ContentTypeCheckbox
-            id="content-image"
             label="Image"
             icon={Image}
             checked={value.contentTypes?.image ?? true}
             onChange={(checked) => toggleContentType('image', checked)}
           />
           <ContentTypeCheckbox
-            id="content-video"
             label="Video"
             icon={Video}
             checked={value.contentTypes?.video ?? false}
@@ -109,6 +204,17 @@ export default function CreativeOptions({ value, onChange, className, mediaOnly 
           />
         </div>
         <p className="mt-1.5 text-xs text-text-muted">Select image, video, or both.</p>
+      </div>
+
+      <div>
+        <label className="label">Platform</label>
+        <PlatformDropdown
+          value={value.platforms || []}
+          onChange={(platforms) => update('platforms', platforms)}
+        />
+        <p className="mt-1.5 text-xs text-text-muted">
+          After generate, preview each platform size in the top tabs.
+        </p>
       </div>
 
       {!mediaOnly && (

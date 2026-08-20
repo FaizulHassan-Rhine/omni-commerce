@@ -10,12 +10,15 @@ import AIProcessingLoader from '@/components/ui/AIProcessingLoader';
 import Modal from '@/components/ui/Modal';
 import StudioImageEditor from '@/components/studio/StudioImageEditor';
 import StudioVideoEditor from '@/components/studio/StudioVideoEditor';
-import { cropAspectClass, mediaPreviewStyle, overlayClass, overlaySizeClass, withEditDefaults } from '@/lib/studio-edit';
+import HumanRetouchModal from '@/components/studio/HumanRetouchModal';
+import { cropAspectClass, mediaPreviewStyle, overlayClass, overlaySizeClass, platformAspectToCrop, withEditDefaults } from '@/lib/studio-edit';
 import { AI_STUDIO_STAGES, generateStudioMedia, simulateAIProcessing } from '@/lib/mock-ai';
+import { getPlatform, getPlatformCreativeSpec } from '@/data/platforms';
 import { resolveImage } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
-import { ArrowLeft, Play, RefreshCw, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, Paintbrush, Play, RefreshCw, Save, Sparkles } from 'lucide-react';
+import PlatformIcon from '@/components/ui/PlatformIcon';
 
 export default function CreateStudioContent() {
   const router = useRouter();
@@ -50,6 +53,8 @@ export default function CreateStudioContent() {
   const [seed, setSeed] = useState(0);
   const [showComposer, setShowComposer] = useState(true);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [retouchOpen, setRetouchOpen] = useState(false);
+  const [activePlatformId, setActivePlatformId] = useState(null);
 
   useEffect(() => {
     setOptions(initialOptions);
@@ -66,6 +71,26 @@ export default function CreateStudioContent() {
 
   const hasInput = files.length > 0 || prompt.trim().length > 0;
   const sourceImage = files[0]?.preview || sourceAsset?.src || null;
+  const selectedPlatforms = options.platforms || [];
+  const platformTabs = selectedPlatforms.map((id) => {
+    const spec = getPlatformCreativeSpec(id);
+    return {
+      id,
+      name: getPlatform(id).name,
+      label: spec.label,
+      aspect: spec.aspect,
+      cropPreset: platformAspectToCrop(spec.aspect),
+    };
+  });
+
+  const applyPlatformCrop = (platformId, list = null) => {
+    const tab = platformTabs.find((item) => item.id === platformId) || platformTabs[0];
+    if (!tab) return;
+    setActivePlatformId(tab.id);
+    const apply = (items) => items.map((item) => ({ ...item, cropPreset: tab.cropPreset, platformId: tab.id }));
+    if (list) return apply(list);
+    setResults((prev) => apply(prev));
+  };
 
   const generate = async () => {
     if (!hasInput) return;
@@ -73,7 +98,17 @@ export default function CreateStudioContent() {
     setAiStage(0);
     await simulateAIProcessing(AI_STUDIO_STAGES, (stage) => setAiStage(stage), 550);
     const nextSeed = seed + 1;
-    setResults(generateStudioMedia({ prompt, sourceImage, options, seed: nextSeed }).map(withEditDefaults));
+    let nextResults = generateStudioMedia({ prompt, sourceImage, options, seed: nextSeed }).map(withEditDefaults);
+    const firstPlatform = (options.platforms || [])[0];
+    if (firstPlatform) {
+      const spec = getPlatformCreativeSpec(firstPlatform);
+      const cropPreset = platformAspectToCrop(spec.aspect);
+      nextResults = nextResults.map((item) => ({ ...item, cropPreset, platformId: firstPlatform }));
+      setActivePlatformId(firstPlatform);
+    } else {
+      setActivePlatformId(null);
+    }
+    setResults(nextResults);
     setSelectedIndex(0);
     setSeed(nextSeed);
     setGenerating(false);
@@ -104,6 +139,15 @@ export default function CreateStudioContent() {
         ? withEditDefaults({ type: item.type, src: item.src, name: item.name })
         : item
     )));
+  };
+
+  const submitHumanRetouch = ({ asset, marks }) => {
+    const markNote = marks.length ? ` with ${marks.length} marked area${marks.length === 1 ? '' : 's'}` : '';
+    addToast(
+      'success',
+      `Human retouch requested for this ${asset.type}${markNote}. Our team will update it in Content Studio.`
+    );
+    setRetouchOpen(false);
   };
 
   return (
@@ -169,11 +213,47 @@ export default function CreateStudioContent() {
                         <RefreshCw className="h-4 w-4" /> Regenerate
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setRetouchOpen(true)}
+                      className="btn border border-brand-secondary/40 bg-brand-gradient-subtle text-sm text-brand-secondary hover:border-brand-secondary"
+                    >
+                      <Paintbrush className="h-4 w-4" /> Human Retouch
+                    </button>
                     <button type="button" onClick={saveToLibrary} className="btn-gradient text-sm">
                       <Save className="h-4 w-4" /> Save to studio
                     </button>
                   </div>
                 </div>
+
+                {platformTabs.length > 0 && (
+                  <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex gap-1 overflow-x-auto scrollbar-thin" aria-label="Platform sizes">
+                      {platformTabs.map((tab) => {
+                        const selectedTab = (activePlatformId || platformTabs[0]?.id) === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => applyPlatformCrop(tab.id)}
+                            className={cn(
+                              'flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+                              selectedTab
+                                ? 'border-brand-primary text-brand-primary'
+                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                            )}
+                          >
+                            <PlatformIcon platformId={tab.id} size="sm" className="shadow-none" />
+                            <span>{tab.name}</span>
+                            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-text-muted">
+                              {tab.aspect}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                )}
 
                 {results.length > 1 && (
                   <div className="flex gap-2 overflow-x-auto pb-1">
@@ -265,6 +345,13 @@ export default function CreateStudioContent() {
           )}
         </div>
       </Modal>
+
+      <HumanRetouchModal
+        open={retouchOpen && Boolean(selected)}
+        asset={selected}
+        onClose={() => setRetouchOpen(false)}
+        onSubmit={submitHumanRetouch}
+      />
     </div>
   );
 }

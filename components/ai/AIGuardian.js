@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { resolveImage } from '@/lib/images';
 import { getGuardianCounts, getGuardianIssues } from '@/lib/ai-guardian';
@@ -53,7 +52,13 @@ export function AIGuardianPanel() {
   const { addToast } = useApp();
   const [filter, setFilter] = useState('all');
   const [scanning, setScanning] = useState(false);
+  const [introGlow, setIntroGlow] = useState(true);
   const [issues, setIssues] = useState(() => getGuardianIssues().map((item) => ({ ...item, resolved: false })));
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIntroGlow(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const counts = useMemo(() => getGuardianCounts(issues), [issues]);
   const visible = issues.filter((item) => {
@@ -77,7 +82,17 @@ export function AIGuardianPanel() {
   };
 
   return (
-    <div className="page-container animate-fade-in pb-20">
+    <>
+    {introGlow && (
+    <div className="guardian-page-glow" aria-hidden>
+      <div className="wash" />
+      <span className="blob blob-a" />
+      <span className="blob blob-b" />
+      <span className="blob blob-c" />
+      <div className="sweep" />
+    </div>
+    )}
+    <div className="page-container relative z-10 animate-fade-in pb-20">
       <PageHeader
         title="AI Guardian"
         subtitle="Existing products and campaigns that need improvement before you launch or scale."
@@ -173,6 +188,7 @@ export function AIGuardianPanel() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -192,46 +208,5 @@ function SummaryCard({ label, value, icon: Icon, tone }) {
       </div>
       <p className="mt-2 text-3xl font-bold text-text-primary">{value}</p>
     </div>
-  );
-}
-
-export default function AIGuardian() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [expanding, setExpanding] = useState(false);
-
-  useEffect(() => {
-    setExpanding(false);
-  }, [pathname]);
-
-  if (pathname === '/guardian' || pathname.startsWith('/guardian/')) return null;
-
-  const openGuardian = () => {
-    if (expanding) return;
-    setExpanding(true);
-    window.setTimeout(() => {
-      router.push('/guardian');
-    }, 1050);
-  };
-
-  return (
-    <>
-      {!expanding && (
-        <button type="button" onClick={openGuardian} className="siri-orb cursor-pointer" aria-label="Open AI Guardian">
-          <span className="siri-orb-core">
-            <Sparkles className="relative h-6 w-6 text-white drop-shadow" />
-          </span>
-        </button>
-      )}
-      {expanding && (
-        <div className="pointer-events-none fixed inset-0 top-16 z-40 overflow-hidden lg:left-56">
-          <div className="siri-page-glow">
-            <span className="blob blob-a" />
-            <span className="blob blob-b" />
-            <span className="blob blob-c" />
-          </div>
-        </div>
-      )}
-    </>
   );
 }

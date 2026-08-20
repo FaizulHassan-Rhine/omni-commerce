@@ -6,15 +6,16 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import CampaignTabs from '@/components/campaign/CampaignTabs';
-import ApprovalRowActions from '@/components/ui/ApprovalRowActions';
+import { ApproveAction, PublishAction } from '@/components/ui/ApprovalRowActions';
 import { resolveImage } from '@/lib/images';
 import { formatDate, cn, getCampaignHealth } from '@/lib/utils';
 import { ContentScore } from '@/components/ui/AIRecommendation';
 import { useApp } from '@/context/AppContext';
+import { canApproveItem, canPublishItem, isItemPublished } from '@/lib/journey';
 import { LayoutGrid, LayoutList, Search } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
-const STATUS_FILTERS = ['All', 'Active', 'Draft', 'Paused', 'Completed', 'Needs Review', 'Rejected'];
+const STATUS_FILTERS = ['All', 'Draft', 'Needs Review', 'Approved', 'Published', 'Active', 'Paused', 'Completed', 'Rejected'];
 
 export default function CampaignsPage() {
   const { workspaceCampaigns, catalogProducts, updateCampaign, addToast } = useApp();
@@ -31,7 +32,9 @@ export default function CampaignsPage() {
     const q = search.trim().toLowerCase();
     return workspaceCampaigns.filter((c) => {
       const product = productById[c.productId];
-      const matchStatus = statusFilter === 'All' || c.status === statusFilter;
+      const matchStatus =
+        statusFilter === 'All' ||
+        (statusFilter === 'Published' ? isItemPublished(c) : c.status === statusFilter);
       const matchSearch =
         !q ||
         c.name.toLowerCase().includes(q) ||
@@ -41,14 +44,12 @@ export default function CampaignsPage() {
     });
   }, [search, statusFilter, workspaceCampaigns, productById]);
 
-  const needsAction = (campaign) => campaign.status === 'Draft' || campaign.status === 'Needs Review';
-
   const decideCampaign = (event, campaign, action) => {
     event.preventDefault();
     event.stopPropagation();
     if (action === 'Approved') {
-      updateCampaign(campaign.id, { status: 'Active', published: campaign.published === true });
-      addToast('success', `${campaign.name} approved.`);
+      updateCampaign(campaign.id, { status: 'Approved', published: false });
+      addToast('success', `${campaign.name} approved. Publish it when you are ready to go live.`);
       return;
     }
     updateCampaign(campaign.id, { status: 'Active', published: true });
@@ -118,7 +119,7 @@ export default function CampaignsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                {['Campaign', 'Objective', 'Channels', 'Created', 'Health', 'Status', 'Action'].map((h) => (
+                {['Campaign', 'Objective', 'Channels', 'Created', 'Health', 'Status', 'Publish'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -149,17 +150,21 @@ export default function CampaignsPage() {
                     <td className="px-4 py-3">
                       {health != null ? <ContentScore score={health} /> : <span className="text-gray-400">—</span>}
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
                     <td className="px-4 py-3">
-                      <ApprovalRowActions
-                        needsAction={needsAction(c)}
-                        onApprove={(event) => decideCampaign(event, c, 'Approved')}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={c.status} />
+                        <ApproveAction
+                          enabled={canApproveItem(c.status)}
+                          onApprove={(event) => decideCampaign(event, c, 'Approved')}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <PublishAction
+                        enabled={canPublishItem(c)}
+                        published={isItemPublished(c)}
                         onPublish={(event) => decideCampaign(event, c, 'Published')}
-                      >
-                        {c.published || c.status === 'Active' || c.status === 'Completed' ? (
-                          <StatusBadge status="Published" />
-                        ) : null}
-                      </ApprovalRowActions>
+                      />
                     </td>
                   </tr>
                 );
@@ -188,17 +193,17 @@ export default function CampaignsPage() {
                     {health != null ? <ContentScore score={health} /> : <span className="text-xs text-gray-400">—</span>}
                   </div>
                   <div onClick={(event) => event.preventDefault()}>
-                    <ApprovalRowActions
-                      needsAction={needsAction(c)}
+                    <ApproveAction
+                      enabled={canApproveItem(c.status)}
                       onApprove={(event) => decideCampaign(event, c, 'Approved')}
-                      onPublish={(event) => decideCampaign(event, c, 'Published')}
-                    >
-                      {c.published || c.status === 'Active' || c.status === 'Completed' ? (
-                        <StatusBadge status="Published" />
-                      ) : (
-                        <p className="text-xs text-gray-400">{formatDate(c.startDate)}</p>
-                      )}
-                    </ApprovalRowActions>
+                    />
+                    <div className="mt-2">
+                      <PublishAction
+                        enabled={canPublishItem(c)}
+                        published={isItemPublished(c)}
+                        onPublish={(event) => decideCampaign(event, c, 'Published')}
+                      />
+                    </div>
                   </div>
                 </div>
               </Link>

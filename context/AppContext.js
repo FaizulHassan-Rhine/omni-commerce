@@ -27,7 +27,7 @@ function slimAsset(value) {
 function withPublished(items = []) {
   return items.map((item) => ({
     ...item,
-    published: item.published ?? (item.status === 'Approved' || item.status === 'Active'),
+    published: item.published === true,
     image: slimAsset(item.image),
   }));
 }

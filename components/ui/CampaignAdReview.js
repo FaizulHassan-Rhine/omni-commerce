@@ -75,36 +75,32 @@ export default function CampaignAdReview({ ads, activeId, onSelect, onChange, sh
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-      <div className="card h-fit space-y-2 p-3">
-        <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Ad platforms</p>
-        {ads.map((ad) => (
-          <label
-            key={ad.id}
-            className={cn(
-              'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all',
-              active.id === ad.id
-                ? 'border-brand-primary bg-brand-gradient-subtle'
-                : 'border-transparent hover:bg-gray-50'
-            )}
-          >
-            <input
-              type="radio"
-              name="campaign-ad-platform"
-              checked={active.id === ad.id}
-              onChange={() => onSelect(ad.id)}
-              className="accent-brand-primary"
-            />
-            <PlatformIcon platformId={ad.id} size="sm" className="shadow-none" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-text-primary">{ad.name}</p>
-              <p className="text-[11px] text-text-muted">{ad.aspectLabel}</p>
-            </div>
-            <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-semibold capitalize', statusStyles[ad.status])}>
-              {ad.status}
-            </span>
-          </label>
-        ))}
+    <div className="space-y-4">
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-1 overflow-x-auto scrollbar-thin" aria-label="Ad platforms">
+          {ads.map((ad) => {
+            const selected = active.id === ad.id;
+            return (
+              <button
+                key={ad.id}
+                type="button"
+                onClick={() => onSelect(ad.id)}
+                className={cn(
+                  'flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors',
+                  selected
+                    ? 'border-brand-primary text-brand-primary'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                )}
+              >
+                <PlatformIcon platformId={ad.id} size="sm" className="shadow-none" />
+                <span>{ad.name}</span>
+                <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold capitalize', statusStyles[ad.status])}>
+                  {ad.status}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       <div className={cn('grid min-w-0 items-start gap-4', hasSideColumn && 'xl:grid-cols-[1fr_minmax(0,300px)]')}>

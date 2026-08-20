@@ -8,19 +8,24 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import PlatformIcon from '@/components/ui/PlatformIcon';
 import ProductTabs from '@/components/product/ProductTabs';
 import ProductDetailDrawer from '@/components/product/ProductDetailDrawer';
-import ApprovalRowActions from '@/components/ui/ApprovalRowActions';
+import ApprovalRowActions, { ApproveAction, PublishAction } from '@/components/ui/ApprovalRowActions';
 import { ContentScore } from '@/components/ui/AIRecommendation';
 import { campaigns as seedCampaigns } from '@/data/campaigns';
 import { resolveImage } from '@/lib/images';
 import { formatDate, cn } from '@/lib/utils';
+import { canApproveItem, canPublishItem, canStartProductCampaign, isItemPublished } from '@/lib/journey';
 import { useApp } from '@/context/AppContext';
 import { LayoutGrid, LayoutList, Search } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
-const STATUS_FILTERS = ['All', 'Approved', 'Pending', 'Rejected', 'Draft'];
+const STATUS_FILTERS = ['All', 'Draft', 'Pending', 'Approved', 'Published', 'Rejected'];
 const productsInCampaign = new Set(seedCampaigns.map((c) => c.productId));
 
-function CampaignAction({ inCampaign, productId }) {
+function CampaignAction({ inCampaign, productId, approved }) {
+  if (!approved) {
+    return <span className="text-xs text-text-muted">Approve first</span>;
+  }
+
   if (inCampaign) {
     return (
       <Link href="/campaigns" className="btn-secondary py-1.5 text-xs whitespace-nowrap">
@@ -84,8 +89,8 @@ function CatalogPageContent() {
   const decideProduct = (event, product, action) => {
     event.stopPropagation();
     if (action === 'Approved') {
-      updateProduct(product.id, { status: 'Approved', published: product.published === true });
-      addToast('success', `${product.name} approved.`);
+      updateProduct(product.id, { status: 'Approved', published: false });
+      addToast('success', `${product.name} approved. Publish it when you are ready.`);
       return;
     }
     updateProduct(product.id, { status: 'Approved', published: true });
@@ -95,7 +100,9 @@ function CatalogPageContent() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return catalogProducts.filter((p) => {
-      const matchStatus = statusFilter === 'All' || p.status === statusFilter;
+      const matchStatus =
+        statusFilter === 'All' ||
+        (statusFilter === 'Published' ? p.published === true : p.status === statusFilter);
       const matchSearch =
         !q ||
         p.name.toLowerCase().includes(q) ||
@@ -168,7 +175,7 @@ function CatalogPageContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                {['Product', 'Category', 'Channels', 'Created', 'Health', 'Status', 'Campaign'].map((h) => (
+                {['Product', 'Category', 'Channels', 'Created', 'Health', 'Status', 'Publish', 'Campaign'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -194,15 +201,28 @@ function CatalogPageContent() {
                   </td>
                   <td className="px-4 py-3 text-gray-500">{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
                   <td className="px-4 py-3"><ContentScore score={p.contentScore} /></td>
-                  <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={p.status} />
+                      <ApproveAction
+                        enabled={canApproveItem(p.status)}
+                        onApprove={(event) => decideProduct(event, p, 'Approved')}
+                      />
+                    </div>
+                  </td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                    <ApprovalRowActions
-                      needsAction={p.status !== 'Approved' && p.status !== 'Rejected'}
-                      onApprove={(event) => decideProduct(event, p, 'Approved')}
+                    <PublishAction
+                      enabled={canPublishItem(p)}
+                      published={isItemPublished(p)}
                       onPublish={(event) => decideProduct(event, p, 'Published')}
-                    >
-                      <CampaignAction inCampaign={campaignProductIds.has(p.id)} productId={p.id} />
-                    </ApprovalRowActions>
+                    />
+                  </td>
+                  <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                    <CampaignAction
+                      inCampaign={campaignProductIds.has(p.id)}
+                      productId={p.id}
+                      approved={canStartProductCampaign(p)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -226,13 +246,22 @@ function CatalogPageContent() {
                   </div>
                   <ContentScore score={p.contentScore} />
                 </div>
-                <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
-                  <ApprovalRowActions
-                    needsAction={p.status !== 'Approved' && p.status !== 'Rejected'}
+                <div className="space-y-2" onClick={(event) => event.stopPropagation()}>
+                  <ApproveAction
+                    enabled={canApproveItem(p.status)}
                     onApprove={(event) => decideProduct(event, p, 'Approved')}
+                  />
+                  <ApprovalRowActions
+                    canApprove={false}
+                    canPublish={canPublishItem(p)}
+                    published={isItemPublished(p)}
                     onPublish={(event) => decideProduct(event, p, 'Published')}
                   >
-                    <CampaignAction inCampaign={campaignProductIds.has(p.id)} productId={p.id} />
+                    <CampaignAction
+                      inCampaign={campaignProductIds.has(p.id)}
+                      productId={p.id}
+                      approved={canStartProductCampaign(p)}
+                    />
                   </ApprovalRowActions>
                 </div>
               </div>

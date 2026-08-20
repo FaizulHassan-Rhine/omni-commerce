@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import ContentStudioTabs from '@/components/studio/ContentStudioTabs';
+import HumanRetouchModal from '@/components/studio/HumanRetouchModal';
 import { mediaPreviewStyle } from '@/lib/studio-edit';
 import { resolveImage } from '@/lib/images';
 import { useApp } from '@/context/AppContext';
-import { Pencil, Play, Plus, Sparkles } from 'lucide-react';
+import { Paintbrush, Pencil, Play, Plus, Sparkles } from 'lucide-react';
 
-function MediaCard({ asset }) {
+function MediaCard({ asset, onHumanRetouch }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-card">
       <div className="relative aspect-square bg-gray-100">
@@ -28,13 +29,26 @@ function MediaCard({ asset }) {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-2 p-2">
-        <Link href={`/create/content/edit/${asset.id}`} className="btn-secondary py-1.5 text-xs">
-          <Pencil className="h-3.5 w-3.5" /> Edit
+      <div className="grid grid-cols-3 gap-1 p-2">
+        <Link
+          href={`/create/content/edit/${asset.id}`}
+          className="btn-secondary whitespace-nowrap px-1 py-1.5 text-[10px] leading-none"
+        >
+          <Pencil className="h-3 w-3 shrink-0" /> Edit
         </Link>
-        <Link href={`/create/content/new?type=${asset.type}&from=${asset.id}`} className="btn-gradient py-1.5 text-xs">
-          <Sparkles className="h-3.5 w-3.5" /> Edit with AI
+        <Link
+          href={`/create/content/new?type=${asset.type}&from=${asset.id}`}
+          className="btn-gradient whitespace-nowrap px-1 py-1.5 text-[10px] leading-none"
+        >
+          <Sparkles className="h-3 w-3 shrink-0" /> Edit with AI
         </Link>
+        <button
+          type="button"
+          onClick={() => onHumanRetouch?.(asset)}
+          className="btn whitespace-nowrap border border-brand-secondary/40 bg-brand-gradient-subtle px-1 py-1.5 text-[10px] leading-none text-brand-secondary hover:border-brand-secondary"
+        >
+          <Paintbrush className="h-3 w-3 shrink-0" /> Human Retouch
+        </button>
       </div>
     </div>
   );
@@ -42,13 +56,23 @@ function MediaCard({ asset }) {
 
 export default function ContentStudioPage() {
   const searchParams = useSearchParams();
-  const { studioAssets } = useApp();
+  const { studioAssets, addToast } = useApp();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'video' ? 'video' : 'image');
+  const [retouchAsset, setRetouchAsset] = useState(null);
 
   const items = useMemo(
     () => studioAssets.filter((asset) => asset.type === activeTab),
     [studioAssets, activeTab]
   );
+
+  const submitHumanRetouch = ({ asset, instructions, marks }) => {
+    const markNote = marks.length ? ` with ${marks.length} marked area${marks.length === 1 ? '' : 's'}` : '';
+    addToast(
+      'success',
+      `Human retouch requested for this ${asset.type}${markNote}. Our team will update it in Content Studio.`
+    );
+    setRetouchAsset(null);
+  };
 
   return (
     <div className="page-container pb-20 lg:pb-6">
@@ -70,9 +94,16 @@ export default function ContentStudioPage() {
         </Link>
 
         {items.map((asset) => (
-          <MediaCard key={asset.id} asset={asset} />
+          <MediaCard key={asset.id} asset={asset} onHumanRetouch={setRetouchAsset} />
         ))}
       </div>
+
+      <HumanRetouchModal
+        open={Boolean(retouchAsset)}
+        asset={retouchAsset}
+        onClose={() => setRetouchAsset(null)}
+        onSubmit={submitHumanRetouch}
+      />
     </div>
   );
 }

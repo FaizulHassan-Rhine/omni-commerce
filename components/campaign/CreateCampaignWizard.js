@@ -15,6 +15,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import CreativeOptions, { defaultCreativeOptions, formatContentTypes } from '@/components/ui/CreativeOptions';
 import { resolveImage } from '@/lib/images';
 import { cn } from '@/lib/utils';
+import { isItemApproved } from '@/lib/journey';
 import { generateCampaignAds } from '@/lib/campaign-review';
 import { AI_CAMPAIGN_STAGES, generateCampaignContent, generatePlatformAudienceSuggestions, generatePlatformBudgetPlan, simulateAIProcessing } from '@/lib/mock-ai';
 import { useApp } from '@/context/AppContext';
@@ -44,7 +45,8 @@ const adPlatforms = [
 export default function CreateCampaignWizard() {
   const searchParams = useSearchParams();
   const { addToast, upsertCampaign, catalogProducts } = useApp();
-  const presetProduct = catalogProducts.find((p) => p.id === searchParams.get('product'));
+  const campaignReadyProducts = catalogProducts.filter((product) => isItemApproved(product.status));
+  const presetProduct = campaignReadyProducts.find((p) => p.id === searchParams.get('product'));
   const [step, setStep] = useState(presetProduct ? 1 : 0);
   const [prompt, setPrompt] = useState('');
   const [productSearch, setProductSearch] = useState('');
@@ -200,7 +202,7 @@ export default function CreateCampaignWizard() {
     setUploadedFiles([]);
   };
 
-  const filteredProducts = catalogProducts.filter((product) => {
+  const filteredProducts = campaignReadyProducts.filter((product) => {
     const query = productSearch.trim().toLowerCase();
     if (!query) return true;
     return (
@@ -239,7 +241,7 @@ export default function CreateCampaignWizard() {
       await new Promise((r) => setTimeout(r, 700));
     }
     setSubmittedForApproval(true);
-    addToast('success', 'Campaign added to Campaigns. Approve or publish it there.');
+    addToast('success', 'Campaign added to Campaigns. Approve it first, then publish to go live.');
   };
 
   return (
@@ -301,7 +303,9 @@ export default function CreateCampaignWizard() {
               </div>
               {filteredProducts.length === 0 && (
                 <p className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-text-muted">
-                  No products match your search.
+                  {campaignReadyProducts.length === 0
+                    ? 'Approve a product first, then start a campaign.'
+                    : 'No products match your search.'}
                 </p>
               )}
             </div>

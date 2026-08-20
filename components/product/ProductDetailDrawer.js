@@ -12,6 +12,7 @@ import { brandKit } from '@/data/brand';
 import { resolveImage } from '@/lib/images';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
+import { canApproveItem, canPublishItem, canStartProductCampaign, isItemPublished } from '@/lib/journey';
 import { BarChart3, Check, Clock, Globe, Megaphone, Search, Tag, X } from 'lucide-react';
 
 function healthColor(score) {
@@ -87,15 +88,20 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
 
   if (!product) return null;
 
-  const published = product.published === true;
-  const canAct = product.status !== 'Approved' && product.status !== 'Rejected';
+  const published = isItemPublished(product);
+  const canApprove = canApproveItem(product.status);
+  const canPublish = canPublishItem(product);
 
   const handleApprove = () => {
-    onUpdate?.({ status: 'Approved', published: product.published === true });
-    addToast('success', `${product.name} approved.`);
+    onUpdate?.({ status: 'Approved', published: false });
+    addToast('success', `${product.name} approved. Publish it when you are ready.`);
   };
 
   const handlePublish = () => {
+    if (!canPublish) {
+      addToast('error', 'Approve this product before publishing.');
+      return;
+    }
     onUpdate?.({ status: 'Approved', published: true });
     addToast('success', `${product.name} published.`);
   };
@@ -263,7 +269,7 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
             <FooterState label="Rejected" icon={X} tone="rejected" />
           ) : (
             <>
-              {canAct ? (
+              {canApprove ? (
                 <button type="button" onClick={handleApprove} className="btn-gradient flex-1 text-sm">
                   <Check className="h-4 w-4" /> Approve
                 </button>
@@ -273,18 +279,30 @@ export default function ProductDetailDrawer({ product, onClose, onUpdate }) {
               {published ? (
                 <FooterState label="Published" icon={Globe} tone="published" />
               ) : (
-                <button type="button" onClick={handlePublish} className="btn-gradient flex-1 text-sm">
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  disabled={!canPublish}
+                  title={canPublish ? 'Publish to channels' : 'Approve first'}
+                  className="btn-publish flex-1 text-sm"
+                >
                   <Globe className="h-4 w-4" /> Publish
                 </button>
               )}
             </>
           )}
-          <Link
-            href={`/campaigns/create?product=${product.id}`}
-            className="btn-secondary flex-1 text-sm"
-          >
-            <Megaphone className="h-4 w-4" /> Start campaign
-          </Link>
+          {canStartProductCampaign(product) ? (
+            <Link
+              href={`/campaigns/create?product=${product.id}`}
+              className="btn-secondary flex-1 text-sm"
+            >
+              <Megaphone className="h-4 w-4" /> Start campaign
+            </Link>
+          ) : (
+            <span className="btn-secondary flex-1 cursor-not-allowed text-sm opacity-50" title="Approve first">
+              <Megaphone className="h-4 w-4" /> Start campaign
+            </span>
+          )}
         </div>
       </aside>
     </div>
