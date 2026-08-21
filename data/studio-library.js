@@ -1,8 +1,84 @@
 import { products, getProduct } from './products';
 import { campaigns } from './campaigns';
 import { creatives } from './creatives';
+import { getPlatformCreativeSpec } from './platforms';
+
+export const STUDIO_DEMO_SOCIAL_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'linkedin'];
+
+function platformAspectToCrop(aspect) {
+  if (!aspect) return 'original';
+  if (['1:1', '4:5', '2:3', '9:16', '16:9', '1.91:1'].includes(aspect)) return aspect;
+  return 'original';
+}
+
+function buildPlatformVariants(asset, platformIds) {
+  const variants = {};
+  platformIds.forEach((id, index) => {
+    const spec = getPlatformCreativeSpec(id);
+    variants[id] = {
+      cropPreset: platformAspectToCrop(spec.aspect),
+      overlayTitle: index === 0 ? asset.name : '',
+      overlayPosition: 'bottom-left',
+      overlaySize: 'medium',
+      overlayColor: '#FFFFFF',
+      imageScale: 100,
+      imageOffsetX: 0,
+      imageOffsetY: 0,
+      filter: 'original',
+    };
+  });
+  return variants;
+}
+
+export function withMultiPlatformDemo(asset, index) {
+  if (index > 1 || asset.type !== 'image') return asset;
+  const platforms = STUDIO_DEMO_SOCIAL_PLATFORMS;
+  const activePlatformId = platforms[0];
+  const platformVariants = buildPlatformVariants(asset, platforms);
+  return {
+    ...asset,
+    platforms,
+    activePlatformId,
+    platformVariants,
+    ...platformVariants[activePlatformId],
+  };
+}
+
+/** Ensure first two image assets carry multi-platform edit data (also migrates localStorage). */
+export function ensureMultiPlatformDemos(assets = []) {
+  let imageIndex = 0;
+  return assets.map((asset) => {
+    if (asset.type !== 'image') return asset;
+    const index = imageIndex;
+    imageIndex += 1;
+    if (index > 1) return asset;
+    if (asset.platforms?.length > 1 && asset.platformVariants) return asset;
+    return withMultiPlatformDemo(asset, index);
+  });
+}
 
 export function getInitialStudioLibrary() {
+  const multiPlatformDemos = [
+    {
+      id: 'img-multi-1',
+      type: 'image',
+      src: '/images/ad-square.jpg',
+      source: 'campaign',
+      sourceId: 'camp-1',
+      name: 'Summer Collection — Lifestyle',
+      createdAt: '2026-08-16',
+    },
+    {
+      id: 'img-multi-2',
+      type: 'image',
+      src: '/images/ad-square.jpg',
+      source: 'campaign',
+      sourceId: 'camp-1',
+      name: 'Boutique Floor — Social Pack',
+      createdAt: '2026-08-15',
+    },
+  ].map((asset, index) => withMultiPlatformDemo(asset, index));
+
   const images = products.map((product) => ({
     id: `img-${product.id}`,
     type: 'image',
@@ -29,6 +105,7 @@ export function getInitialStudioLibrary() {
 
   creatives.forEach((creative) => {
     if (images.some((item) => item.src === creative.preview && item.source === 'campaign')) return;
+    if (multiPlatformDemos.some((item) => item.src === creative.preview)) return;
     images.push({
       id: `img-${creative.id}`,
       type: 'image',
@@ -97,5 +174,5 @@ export function getInitialStudioLibrary() {
     },
   ];
 
-  return [...images, ...videos];
+  return ensureMultiPlatformDemos([...multiPlatformDemos, ...images, ...videos]);
 }

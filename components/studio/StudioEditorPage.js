@@ -1,11 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import StudioImageEditor from '@/components/studio/StudioImageEditor';
 import StudioVideoEditor from '@/components/studio/StudioVideoEditor';
-import { cropAspectClass, mediaPreviewStyle, overlayClass, overlaySizeClass, withEditDefaults } from '@/lib/studio-edit';
+import PlatformIcon from '@/components/ui/PlatformIcon';
+import {
+  applyPlatformVariant,
+  commitPlatformVariant,
+  cropAspectClass,
+  mediaPreviewStyle,
+  overlayClass,
+  overlaySizeClass,
+  withEditDefaults,
+} from '@/lib/studio-edit';
+import { getPlatform, getPlatformCreativeSpec } from '@/data/platforms';
 import { resolveImage } from '@/lib/images';
 import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
@@ -21,23 +31,66 @@ export default function StudioEditorPage() {
 
   useEffect(() => {
     if (!asset) return;
-    setDraft((prev) => (prev?.id === asset.id ? prev : withEditDefaults(asset)));
+    setDraft((prev) => {
+      if (prev?.id === asset.id) return prev;
+      const base = withEditDefaults(asset);
+      if (!base.platforms?.length) return base;
+      const platformId = base.activePlatformId || base.platforms[0];
+      return applyPlatformVariant(commitPlatformVariant(base, platformId), platformId);
+    });
   }, [asset]);
 
+  const platformTabs = useMemo(() => {
+    if (!draft?.platforms?.length) return [];
+    return draft.platforms.map((id) => {
+      const spec = getPlatformCreativeSpec(id);
+      return {
+        id,
+        name: getPlatform(id).name,
+        aspect: spec.aspect,
+        label: spec.label,
+      };
+    });
+  }, [draft?.platforms]);
+
+  const activePlatformId = draft?.activePlatformId || platformTabs[0]?.id || null;
+
   const applyPatch = (patch) => {
-    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      if (!next.platforms?.length || !next.activePlatformId) return next;
+      return commitPlatformVariant(next, next.activePlatformId);
+    });
+  };
+
+  const switchPlatform = (platformId) => {
+    setDraft((prev) => {
+      if (!prev || prev.activePlatformId === platformId) return prev;
+      const saved = commitPlatformVariant(prev, prev.activePlatformId);
+      return applyPlatformVariant(saved, platformId);
+    });
   };
 
   const save = () => {
     if (!draft) return;
-    updateStudioAsset(draft.id, draft);
+    const toSave = draft.platforms?.length
+      ? commitPlatformVariant(draft, draft.activePlatformId || draft.platforms[0])
+      : draft;
+    updateStudioAsset(toSave.id, toSave);
     addToast('success', 'Edits saved to Content Studio.');
-    router.push(`/create/content?tab=${draft.type}`);
+    router.push(`/create/content?tab=${toSave.type}`);
   };
 
   const reset = () => {
     if (!asset) return;
-    setDraft(withEditDefaults(asset));
+    const base = withEditDefaults(asset);
+    if (!base.platforms?.length) {
+      setDraft(base);
+      return;
+    }
+    const platformId = base.activePlatformId || base.platforms[0];
+    setDraft(applyPlatformVariant(commitPlatformVariant(base, platformId), platformId));
   };
 
   if (!asset) {
@@ -62,9 +115,11 @@ export default function StudioEditorPage() {
             {draft.type === 'video' ? 'Edit video' : 'Edit image'}
           </h1>
           <p className="text-sm text-text-secondary">
-            {draft.type === 'video'
-              ? 'Trim, crop frame by frame, and add subtitles on the timeline.'
-              : 'Adjust crop, color, filters, and text overlay, then save to the library.'}
+            {platformTabs.length > 0
+              ? 'Switch platforms to edit each social crop and overlay separately, then save.'
+              : draft.type === 'video'
+                ? 'Trim, crop frame by frame, and add subtitles on the timeline.'
+                : 'Adjust crop, color, filters, and text overlay, then save to the library.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -72,6 +127,35 @@ export default function StudioEditorPage() {
           <button type="button" onClick={save} className="btn-gradient">Save to library</button>
         </div>
       </div>
+
+      {platformTabs.length > 0 && (
+        <div className="mb-5 border-b border-gray-200">
+          <nav className="-mb-px flex gap-1 overflow-x-auto scrollbar-thin" aria-label="Social platforms">
+            {platformTabs.map((tab) => {
+              const selected = activePlatformId === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => switchPlatform(tab.id)}
+                  className={cn(
+                    'flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+                    selected
+                      ? 'border-brand-primary text-brand-primary'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  )}
+                >
+                  <PlatformIcon platformId={tab.id} size="sm" className="shadow-none" />
+                  <span>{tab.name}</span>
+                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-text-muted">
+                    {tab.aspect}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       {draft.type === 'video' ? (
         <StudioVideoEditor draft={draft} onChange={applyPatch} />

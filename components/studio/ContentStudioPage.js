@@ -6,12 +6,15 @@ import { useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import ContentStudioTabs from '@/components/studio/ContentStudioTabs';
 import HumanRetouchModal from '@/components/studio/HumanRetouchModal';
+import PlatformIcon from '@/components/ui/PlatformIcon';
 import { mediaPreviewStyle } from '@/lib/studio-edit';
 import { resolveImage } from '@/lib/images';
 import { useApp } from '@/context/AppContext';
 import { Paintbrush, Pencil, Play, Plus, Sparkles } from 'lucide-react';
 
 function MediaCard({ asset, onHumanRetouch }) {
+  const platforms = asset.platforms || [];
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-card">
       <div className="relative aspect-square bg-gray-100">
@@ -26,6 +29,16 @@ function MediaCard({ asset, onHumanRetouch }) {
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-text-primary">
               <Play className="h-5 w-5 fill-current" />
             </span>
+          </div>
+        )}
+        {platforms.length > 0 && (
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-lg bg-white/95 px-1.5 py-1 shadow-sm">
+            {platforms.slice(0, 4).map((id) => (
+              <PlatformIcon key={id} platformId={id} size="sm" className="h-5 w-5 shadow-none" />
+            ))}
+            {platforms.length > 4 && (
+              <span className="px-1 text-[10px] font-semibold text-text-muted">+{platforms.length - 4}</span>
+            )}
           </div>
         )}
       </div>

@@ -35,8 +35,11 @@ export default function CreateStudioContent() {
         type === 'video'
           ? { image: false, video: true }
           : { image: true, video: false },
+      platforms: sourceAsset?.platforms?.length
+        ? sourceAsset.platforms
+        : defaultCreativeOptions.platforms,
     }),
-    [type]
+    [type, sourceAsset?.platforms]
   );
 
   const [files, setFiles] = useState(

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { connections as initialConnections } from '@/data/connections';
 import { notifications as initialNotifications } from '@/data/notifications';
-import { getInitialStudioLibrary } from '@/data/studio-library';
+import { ensureMultiPlatformDemos, getInitialStudioLibrary } from '@/data/studio-library';
 import { products as seedProducts } from '@/data/products';
 import { campaigns as seedCampaigns } from '@/data/campaigns';
 
@@ -12,6 +12,7 @@ const STUDIO_KEY = 'omni-studio-library';
 const PRODUCTS_KEY = 'omni-catalog-products';
 const CAMPAIGNS_KEY = 'omni-workspace-campaigns';
 const MAX_STORED_STUDIO = 16;
+const MULTI_PLATFORM_DEMO_IDS = ['img-multi-1', 'img-multi-2'];
 const MAX_STORED_PRODUCTS = 40;
 const MAX_STORED_CAMPAIGNS = 24;
 const FALLBACK_ASSET = '/images/ad-square.jpg';
@@ -48,6 +49,14 @@ function slimStudioAssets(items = []) {
     ...item,
     src: slimAsset(item.src),
   }));
+}
+
+function mergeStudioLibrary(stored = []) {
+  const seed = getInitialStudioLibrary();
+  const demos = seed.filter((item) => MULTI_PLATFORM_DEMO_IDS.includes(item.id));
+  const withoutDemos = stored.filter((item) => !MULTI_PLATFORM_DEMO_IDS.includes(item.id));
+  const merged = [...demos, ...withoutDemos];
+  return ensureMultiPlatformDemos(slimStudioAssets(merged));
 }
 
 function readJson(key) {
@@ -92,7 +101,7 @@ const AppProvider = function AppProvider({ children }) {
 
   useEffect(() => {
     const storedStudio = readJson(STUDIO_KEY);
-    if (storedStudio?.length) setStudioAssets(slimStudioAssets(storedStudio));
+    if (storedStudio?.length) setStudioAssets(mergeStudioLibrary(storedStudio));
     const storedProducts = readJson(PRODUCTS_KEY);
     if (storedProducts?.length) setCatalogProducts(slimProducts(storedProducts));
     const storedCampaigns = readJson(CAMPAIGNS_KEY);
