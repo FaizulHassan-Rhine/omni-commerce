@@ -50,19 +50,19 @@ export default function AppSidebar({ mobileOpen, onMobileClose }) {
 
   const sidebarContent = (
     <>
-      <div className="flex h-16 items-center gap-2 border-b border-gray-200/80 px-4">
-        <Link href="/dashboard" onClick={onMobileClose} className="flex items-center" aria-label="OmniCommerce AI">
+      <div className="flex h-16 items-center gap-2 border-b border-gray-200/80 px-3">
+        <Link href="/dashboard" onClick={onMobileClose} className="flex min-w-0 flex-1 items-center" aria-label="OmniCommerce AI">
           <Image
             src="/images/logo.png"
             alt="OmniCommerce AI"
-            width={40}
-            height={40}
-            className="h-10 w-10 object-contain"
+            width={180}
+            height={48}
+            className="h-9 w-auto max-w-full object-contain object-left"
             priority
           />
         </Link>
         {mobileOpen && (
-          <button onClick={onMobileClose} className="ml-auto cursor-pointer lg:hidden">
+          <button onClick={onMobileClose} className="ml-auto shrink-0 cursor-pointer lg:hidden">
             <X className="h-5 w-5 text-text-muted" />
           </button>
         )}
